@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark-primary: #09090b;
+  --color-dark-secondary: #000000;
+  --color-dark-card: #18181b;
+  --color-dark-hover: #27272a;
+
+  --color-text-primary: #e4e4e7;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+
+  --color-accent-primary: #52525b;
+  --color-accent-hover: #3f3f46;
+  --color-accent-light: rgba(82, 82, 91, 0.15);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-dark-primary text-text-primary antialiased text-sm;
+  }
+
+  h1, h2, h3, h4, h5, h6, p {
+    @apply m-0 tracking-wide;
+  }
+
+  /* Compact headings */
+  h1 { @apply text-2xl md:text-3xl font-bold text-white; }
+  h2 { @apply text-xl md:text-2xl font-semibold text-white; }
+  h3 { @apply text-lg md:text-xl font-medium text-white; }
+  p { @apply text-text-secondary leading-relaxed; }
+}
