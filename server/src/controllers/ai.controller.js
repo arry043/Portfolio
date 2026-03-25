@@ -1,8 +1,11 @@
 import {
-  answerResumeQuestion,
+  askLLM,
+  formatLLMAnswer,
+  getResumeContext,
   getResumeKnowledgeStatus,
   indexResumeFromFile,
 } from '../services/resumeKnowledge.service.js';
+import { getWebsiteContext, mergeContext } from '../services/contextAggregator.service.js';
 
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
@@ -71,7 +74,23 @@ export const askResume = async (req, res, next) => {
     rateState.count += 1;
 
     const { query } = req.validated.body;
-    const response = await answerResumeQuestion(query);
+
+    const [resumeData, websiteContext] = await Promise.all([
+      getResumeContext(query),
+      getWebsiteContext(query),
+    ]);
+
+    const { chunks } = resumeData;
+    const mergedContext = mergeContext(chunks.map(c => c.text), websiteContext);
+
+    let response;
+
+    if (!mergedContext) {
+      response = { answer: NO_DATA_MESSAGE, chunks: [] };
+    } else {
+      const modelAnswer = await askLLM(query, mergedContext);
+      response = formatLLMAnswer(modelAnswer, query, chunks);
+    }
 
     return res.json({
       success: true,

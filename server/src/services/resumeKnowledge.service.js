@@ -194,6 +194,21 @@ const getKnowledgeDocument = async () => {
 };
 
 const parseResumeText = async (file) => {
+  if (!file && typeof file !== 'string') {
+    throw new Error('Resume file or URL is required');
+  }
+
+  if (typeof file === 'string' && file.startsWith('http')) {
+    const response = await fetch(file);
+    if (!response.ok) throw new Error('Failed to fetch resume from URL');
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const parser = new PDFParse({ data: buffer });
+    const parsed = await parser.getText();
+    await parser.destroy();
+    return normalizeText(parsed.text || '');
+  }
+
   if (!file?.buffer) {
     throw new Error('Resume file is required');
   }
@@ -340,7 +355,7 @@ const askGroq = async (query, context) => {
   return payload?.choices?.[0]?.message?.content?.trim() || null;
 };
 
-const askLLM = async (query, context) => {
+export const askLLM = async (query, context) => {
   try {
     const openAiResult = await askOpenAI(query, context);
     if (openAiResult) {
@@ -407,12 +422,9 @@ export const getResumeKnowledgeStatus = async () => {
   };
 };
 
-export const answerResumeQuestion = async (query) => {
+export const getResumeContext = async (query) => {
   if (isAmbiguousQuery(query)) {
-    return {
-      answer: AMBIGUOUS_QUERY_MESSAGE,
-      chunks: [],
-    };
+    return { chunks: [], text: '' };
   }
 
   const knowledge = await getKnowledgeDocument();
@@ -427,21 +439,33 @@ export const answerResumeQuestion = async (query) => {
     .sort((a, b) => b.score - a.score)
     .slice(0, 4);
 
-  if (scoredChunks.length === 0) {
+  return {
+    chunks: scoredChunks,
+    text: scoredChunks.map((chunk) => chunk.text).join('\n\n'),
+  };
+};
+
+export const formatLLMAnswer = (modelAnswer, query, chunks) => {
+  const safeAnswer = modelAnswer
+    ? trimAnswerLines(ensureFirstPersonVoice(modelAnswer))
+    : generateFallbackAnswer(query, chunks);
+
+  return {
+    answer: safeAnswer || DEFAULT_FALLBACK_MESSAGE,
+    chunks: chunks.map((chunk) => ({ index: chunk.index, text: chunk.text })),
+  };
+};
+
+export const answerResumeQuestion = async (query) => {
+  const { chunks, text } = await getResumeContext(query);
+
+  if (chunks.length === 0) {
     return {
       answer: DEFAULT_FALLBACK_MESSAGE,
       chunks: [],
     };
   }
 
-  const context = scoredChunks.map((chunk) => chunk.text).join('\n\n');
-  const modelAnswer = await askLLM(query, context);
-  const safeAnswer = modelAnswer
-    ? trimAnswerLines(ensureFirstPersonVoice(modelAnswer))
-    : generateFallbackAnswer(query, scoredChunks);
-
-  return {
-    answer: safeAnswer || DEFAULT_FALLBACK_MESSAGE,
-    chunks: scoredChunks.map((chunk) => ({ index: chunk.index, text: chunk.text })),
-  };
+  const modelAnswer = await askLLM(query, text);
+  return formatLLMAnswer(modelAnswer, query, chunks);
 };
