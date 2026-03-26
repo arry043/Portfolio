@@ -15,11 +15,34 @@ if (process.env.NODE_ENV !== 'test') {
   connectDB();
 }
 
+console.log(`[INIT] Running in ${process.env.NODE_ENV || 'development'} mode.`);
+console.log(`[INIT] CLIENT_URL is set to: ${process.env.CLIENT_URL}`);
+
 // Middleware
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or Postman)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`[CORS DEBUG] Rejected origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
+
+// Log incoming requests for debugging
+app.use((req, res, next) => {
+  console.log(`[REQ DEBUG] ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 

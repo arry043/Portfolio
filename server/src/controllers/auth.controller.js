@@ -40,19 +40,32 @@ export const registerUser = async (req, res, next) => {
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log(`[AUTH DEBUG] Login request received for email: ${email}`);
 
     const user = await User.findOne({ email }).select('+password');
-    if (user && user.provider === 'local' && (await bcrypt.compare(password, user.password))) {
-      res.json({
-        success: true,
-        token: generateToken(user._id, user.role),
-        user: { _id: user._id, name: user.name, email: user.email, role: user.role }
-      });
+    console.log(`[AUTH DEBUG] User found in DB: ${!!user}`);
+
+    if (user && user.provider === 'local') {
+      const isMatch = await bcrypt.compare(password, user.password);
+      console.log(`[AUTH DEBUG] Bcrypt compare result: ${isMatch}`);
+
+      if (isMatch) {
+        console.log(`[AUTH DEBUG] Generating token for user: ${user._id}`);
+        res.json({
+          success: true,
+          token: generateToken(user._id, user.role),
+          user: { _id: user._id, name: user.name, email: user.email, role: user.role }
+        });
+      } else {
+        res.status(401);
+        throw new Error('Invalid email or password');
+      }
     } else {
       res.status(401);
       throw new Error('Invalid email or password');
     }
   } catch (error) {
+    console.error(`[AUTH ERROR] Login failed: ${error.message}`);
     next(error);
   }
 };

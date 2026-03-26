@@ -10,7 +10,7 @@ import InputField from '../components/auth/InputField';
 import Button from '../components/ui/Button';
 import SectionWrapper from '../components/layout/SectionWrapper';
 import Container from '../components/layout/Container';
-import axios from 'axios';
+import axiosInstance from '../lib/axios';
 import { useToast } from '../context/ToastContext';
 
 const loginSchema = z.object({
@@ -37,7 +37,7 @@ const Login = () => {
     setServerError('');
     const loadingToastId = toast.loading('Signing in...');
     try {
-      const response = await axios.post('http://localhost:5001/api/v1/auth/login', data);
+      const response = await axiosInstance.post('/auth/login', data);
       login(response.data.user, response.data.token);
       toast.update(loadingToastId, {
         type: 'success',
