@@ -5,59 +5,64 @@ import ModeSwitcher from './ModeSwitcher';
 import RoleRotator from './RoleRotator';
 
 const containerAnimation = {
-  hidden: { opacity: 0, y: 14 },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.45,
+      duration: 0.4,
       ease: 'easeOut',
-      staggerChildren: 0.08,
+      staggerChildren: 0.1,
     },
   },
 };
 
 const itemAnimation = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 15 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
 };
 
-const HeroContent = ({ name, tagline, summary, mode, roles, onModeChange }) => {
+const HeroContent = ({ name, mode, onModeChange }) => {
+  const dynamicRoles = [
+    "Full Stack Developer",
+    "Backend Developer",
+    "AI/ML Engineer"
+  ];
+
   return (
     <Motion.div
       variants={containerAnimation}
       initial="hidden"
       animate="visible"
-      className="space-y-4 text-center lg:text-left"
+      className="space-y-1 flex flex-col items-center lg:items-start text-center lg:text-left justify-center"
     >
       <Motion.div
         variants={itemAnimation}
-        className="inline-flex items-center rounded-full border border-zinc-800/90 bg-zinc-950/60 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-zinc-400"
+        className="mb-4 inline-flex items-center rounded-full border border-zinc-800/90 bg-zinc-950/60 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-zinc-400"
       >
         Available For Product Builds
       </Motion.div>
 
       <Motion.h1
         variants={itemAnimation}
-        className="text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl"
+        className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight tracking-tight"
       >
         {name}
-        <span className="block text-zinc-400">{tagline}</span>
       </Motion.h1>
+
+      <Motion.div variants={itemAnimation} className="mt-2 space-y-3 flex flex-col items-center lg:items-start w-full">
+        <RoleRotator key={mode} mode={mode} roles={dynamicRoles} />
+        <ModeSwitcher mode={mode} onModeChange={onModeChange} />
+      </Motion.div>
 
       <Motion.p
         variants={itemAnimation}
-        className="mx-auto max-w-xl text-sm leading-relaxed text-zinc-400 lg:mx-0"
+        className="text-sm sm:text-base text-zinc-400 max-w-lg leading-relaxed mt-3"
       >
-        {summary}
+        Full Stack Developer (MERN + Django) with strong backend expertise, AI integration, and performance-focused architecture. Passionate about building scalable products and real-world solutions.
       </Motion.p>
 
-      <Motion.div variants={itemAnimation} className="space-y-3">
-        <ModeSwitcher mode={mode} onModeChange={onModeChange} />
-        <RoleRotator key={mode} mode={mode} roles={roles} />
-      </Motion.div>
-
-      <Motion.div variants={itemAnimation}>
+      <Motion.div variants={itemAnimation} className="mt-5 flex justify-center lg:justify-start w-full">
         <CTAButtons />
       </Motion.div>
     </Motion.div>

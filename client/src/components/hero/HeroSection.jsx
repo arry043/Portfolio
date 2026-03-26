@@ -1,164 +1,92 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion as Motion } from 'framer-motion';
-import Container from '../layout/Container';
-import SectionWrapper from '../layout/SectionWrapper';
-import Card from '../ui/Card';
-import HeroContent from './HeroContent';
-import {
-  DEFAULT_MODE,
-  HERO_CONTENT,
-  MODE_OPTIONS,
-  getModeHighlights,
-  getModeRoles,
-  getValidatedMode,
-} from './hero.constants';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion as Motion } from "framer-motion";
+import Container from "../layout/Container";
+import SectionWrapper from "../layout/SectionWrapper";
+import HeroContent from "./HeroContent";
+import { DEFAULT_MODE, HERO_CONTENT, getValidatedMode } from "./hero.constants";
 
 const MODE_SWITCH_DEBOUNCE_MS = 130;
 
 const HeroSection = ({ profile }) => {
-  const [mode, setMode] = useState(DEFAULT_MODE);
-  const modeSwitchTimerRef = useRef(null);
+    const [mode, setMode] = useState(DEFAULT_MODE);
+    const modeSwitchTimerRef = useRef(null);
 
-  const heroIdentity = useMemo(
-    () => ({
-      name: profile?.name || HERO_CONTENT.name,
-      tagline: profile?.title || HERO_CONTENT.tagline,
-      summary: profile?.summary || HERO_CONTENT.summary,
-    }),
-    [profile?.name, profile?.summary, profile?.title]
-  );
-
-  const activeMode = useMemo(() => getValidatedMode(mode), [mode]);
-  const activeRoles = useMemo(() => getModeRoles(activeMode), [activeMode]);
-  const activeHighlights = useMemo(
-    () => getModeHighlights(activeMode),
-    [activeMode]
-  );
-
-  const activeModeLabel = useMemo(() => {
-    return (
-      MODE_OPTIONS.find((option) => option.value === activeMode)?.label ??
-      MODE_OPTIONS[0].label
+    const heroIdentity = useMemo(
+        () => ({
+            name: profile?.name || HERO_CONTENT.name,
+        }),
+        [profile?.name],
     );
-  }, [activeMode]);
 
-  const handleModeChange = useCallback((nextMode) => {
-    const safeMode = getValidatedMode(nextMode);
+    const activeMode = useMemo(() => getValidatedMode(mode), [mode]);
 
-    if (modeSwitchTimerRef.current) {
-      window.clearTimeout(modeSwitchTimerRef.current);
-    }
+    const handleModeChange = useCallback((nextMode) => {
+        const safeMode = getValidatedMode(nextMode);
 
-    modeSwitchTimerRef.current = window.setTimeout(() => {
-      setMode((previousMode) =>
-        previousMode === safeMode ? previousMode : safeMode
-      );
-    }, MODE_SWITCH_DEBOUNCE_MS);
-  }, []);
+        if (modeSwitchTimerRef.current) {
+            window.clearTimeout(modeSwitchTimerRef.current);
+        }
 
-  useEffect(() => {
-    return () => {
-      if (modeSwitchTimerRef.current) {
-        window.clearTimeout(modeSwitchTimerRef.current);
-      }
-    };
-  }, []);
+        modeSwitchTimerRef.current = window.setTimeout(() => {
+            setMode((previousMode) =>
+                previousMode === safeMode ? previousMode : safeMode,
+            );
+        }, MODE_SWITCH_DEBOUNCE_MS);
+    }, []);
 
-  return (
-    <SectionWrapper
-      id="home"
-      bgVariant="hero"
-      className="min-h-[calc(100vh-4rem)] pt-20 pb-10 sm:pt-24 sm:pb-12"
-    >
-      <Container>
-        <div className="grid grid-cols-1 items-center gap-8 px-3 sm:px-4 lg:grid-cols-2 lg:gap-10">
-          <HeroContent
-            name={heroIdentity.name}
-            tagline={heroIdentity.tagline}
-            summary={heroIdentity.summary}
-            mode={activeMode}
-            roles={activeRoles}
-            onModeChange={handleModeChange}
-          />
+    useEffect(() => {
+        return () => {
+            if (modeSwitchTimerRef.current) {
+                window.clearTimeout(modeSwitchTimerRef.current);
+            }
+        };
+    }, []);
 
-          <Motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: 'easeOut', delay: 0.1 }}
-            className="relative mx-auto w-full max-w-md lg:ml-auto"
-          >
-            <Motion.div
-              aria-hidden
-              className="pointer-events-none absolute -top-10 left-1/2 h-24 w-24 -translate-x-1/2 rounded-full bg-zinc-500/20 blur-3xl"
-              animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.12, 1] }}
-              transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut' }}
-            />
-
-            <Card
-              hoverEffect={false}
-              className="relative overflow-hidden border-zinc-800/90 bg-gradient-to-b from-zinc-900/75 to-black/95 p-4 sm:p-5"
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                    Current Focus
-                  </p>
-                  <p className="text-sm font-semibold text-zinc-100">
-                    {activeModeLabel}
-                  </p>
-                </div>
-                <span className="rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
-                  {activeMode}
-                </span>
-              </div>
-
-              <AnimatePresence mode="wait" initial={false}>
-                <Motion.ul
-                  key={activeMode}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.3, ease: 'easeOut' }}
-                  className="space-y-2"
-                >
-                  {activeHighlights.map((highlight) => (
-                    <li
-                      key={highlight}
-                      className="flex items-start gap-2 text-sm text-zinc-300"
+    return (
+        <SectionWrapper
+            id="home"
+            className="min-h-[90vh] flex flex-col justify-center pt-28 sm:pt-28 lg:pt-16 bg-gradient-to-b from-[#020617] to-black py-16 sm:py-20 lg:py-24"
+        >
+            <Container>
+                <div className="mx-auto max-w-6xl px-4 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+                    {/* IMAGE FIRST ON MOBILE */}
+                    <Motion.div
+                        className="order-1 lg:order-2 relative mx-auto w-full max-w-[260px] sm:max-w-[340px] lg:max-w-[480px] xl:max-w-[520px] lg:translate-x-4"
+                        initial={{ opacity: 0, x: 60 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
                     >
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
-                      <span className="break-words">{highlight}</span>
-                    </li>
-                  ))}
-                </Motion.ul>
-              </AnimatePresence>
+                        <Motion.div
+                            aria-hidden
+                            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 h-4/5 bg-[#020617]/50 opacity-70 blur-[80px] rounded-full"
+                        />
 
-              <div className="mt-5 grid grid-cols-3 gap-2">
-                <div className="rounded-md border border-zinc-800 bg-zinc-950/65 p-2 text-center">
-                  <p className="text-[11px] uppercase tracking-wide text-zinc-500">
-                    UI
-                  </p>
-                  <p className="text-sm font-semibold text-zinc-100">Compact</p>
+                        <Motion.img
+                            src="/hero/arif.png"
+                            alt="Developer"
+                            loading="lazy"
+                            animate={{ y: [0, -12, 0] }}
+                            transition={{
+                                duration: 4,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                            }}
+                            className="relative z-10 w-full h-auto object-contain"
+                        />
+                    </Motion.div>
+
+                    {/* CONTENT SECOND ON MOBILE */}
+                    <div className="order-2 lg:order-1">
+                        <HeroContent
+                            name={heroIdentity.name}
+                            mode={activeMode}
+                            onModeChange={handleModeChange}
+                        />
+                    </div>
                 </div>
-                <div className="rounded-md border border-zinc-800 bg-zinc-950/65 p-2 text-center">
-                  <p className="text-[11px] uppercase tracking-wide text-zinc-500">
-                    Stack
-                  </p>
-                  <p className="text-sm font-semibold text-zinc-100">Modular</p>
-                </div>
-                <div className="rounded-md border border-zinc-800 bg-zinc-950/65 p-2 text-center">
-                  <p className="text-[11px] uppercase tracking-wide text-zinc-500">
-                    Render
-                  </p>
-                  <p className="text-sm font-semibold text-zinc-100">Smooth</p>
-                </div>
-              </div>
-            </Card>
-          </Motion.div>
-        </div>
-      </Container>
-    </SectionWrapper>
-  );
+            </Container>
+        </SectionWrapper>
+    );
 };
 
 export default HeroSection;

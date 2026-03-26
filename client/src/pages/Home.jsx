@@ -4,7 +4,6 @@ import HomeWhatIAm from '../components/home/HomeWhatIAm';
 import HomeAchievements from '../components/home/HomeAchievements';
 import HomeHighlights from '../components/home/HomeHighlights';
 import HomeContactCta from '../components/home/HomeContactCta';
-import HomeFooter from '../components/home/HomeFooter';
 import { useCertificatesQuery, useProjectsQuery, useResumeQuery } from '../hooks/usePortfolioApi';
 import { useToast } from '../context/ToastContext';
 import { getErrorMessage } from '../lib/api';
@@ -49,7 +48,6 @@ const Home = () => {
       />
       <HomeHighlights projects={projects} skills={resume.skills} />
       <HomeContactCta />
-      <HomeFooter name={resume?.profile?.name} />
     </>
   );
 };

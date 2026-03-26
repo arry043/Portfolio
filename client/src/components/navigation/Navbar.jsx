@@ -155,17 +155,17 @@ const Navbar = () => {
     );
 
     return (
-        <header className="fixed left-1/2 top-3 z-50 w-fit -translate-x-1/2 px-3 sm:px-4 lg:px-5">
+        <header className="fixed top-0 left-0 w-full z-50 lg:left-1/2 lg:w-fit lg:-translate-x-1/2 lg:top-3 px-3 sm:px-4 lg:px-5">
             <Motion.div
                 layout
                 transition={{ duration: 0.28, ease: "easeInOut" }}
-                className={`relative flex items-center transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                className={`relative flex w-full items-center transition-all duration-500 ${
                     isCompact
-                        ? "w-fit px-3 py-2 rounded-xl border border-zinc-700/60 bg-zinc-900/70 backdrop-blur-md shadow-lg shadow-black/40 scale-95"
-                        : "w-[min(90vw,72rem)] px-5 py-2.5 rounded-2xl border border-transparent bg-transparent scale-100"
+                        ? "lg:w-fit px-3 py-2 rounded-xl border border-zinc-700/60 bg-zinc-900/70 backdrop-blur-md shadow-lg scale-95"
+                        : "w-full lg:w-[min(90vw,72rem)] px-4 py-2.5 rounded-none lg:rounded-2xl bg-zinc-950/70 lg:bg-transparent border-b border-zinc-800 lg:border-transparent"
                 }`}
             >
-                <div className="flex items-center justify-between px-3 py-2.5 md:hidden">
+                <div className="flex items-center justify-between w-full px-4 h-14 md:hidden">
                     <Link
                         to="/"
                         onClick={closeMenu}

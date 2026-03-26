@@ -7,6 +7,10 @@ const analyticsSchema = new mongoose.Schema(
       required: [true, 'Page is required'],
       trim: true,
     },
+    date: {
+      type: Date,
+      required: true,
+    },
     views: {
       type: Number,
       default: 0,
@@ -17,11 +21,21 @@ const analyticsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    chatbotUsage: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    gameUsage: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );
 
-analyticsSchema.index({ page: 1 }, { unique: true });
+analyticsSchema.index({ page: 1, date: 1 }, { unique: true });
 
 const Analytics = mongoose.model('Analytics', analyticsSchema);
 

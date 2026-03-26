@@ -34,7 +34,7 @@ const RoleRotator = ({ mode, roles }) => {
 
   return (
     <div
-      className="inline-flex min-h-9 items-center overflow-hidden rounded-md border border-zinc-800/80 bg-zinc-950/60 px-3 py-1.5 text-sm text-zinc-100"
+      className="inline-flex min-h-10 items-center overflow-hidden rounded-md border border-zinc-800/80 bg-zinc-950/60 px-4 py-2 text-base sm:text-lg text-zinc-300 font-medium"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -46,7 +46,7 @@ const RoleRotator = ({ mode, roles }) => {
           animate="animate"
           exit="exit"
           transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="block max-w-[14rem] overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:whitespace-normal sm:break-words"
+          className="block max-w-[16rem] overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:whitespace-normal sm:break-words"
           title={activeRole}
         >
           {activeRole}

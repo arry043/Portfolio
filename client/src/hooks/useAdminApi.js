@@ -282,6 +282,24 @@ export const useAdminMessagesQuery = () =>
     queryFn: fetchAdminMessages,
   });
 
+export const useAdminAnalyticsDailyQuery = (days = 30) =>
+  useQuery({
+    queryKey: ['admin', 'analytics-daily', days],
+    queryFn: () => api.get(`/analytics/daily?days=${days}`).then(res => res.data),
+  });
+
+export const useAdminAnalyticsMonthlyQuery = () =>
+  useQuery({
+    queryKey: ['admin', 'analytics-monthly'],
+    queryFn: () => api.get('/analytics/monthly').then(res => res.data),
+  });
+
+export const useAdminAnalyticsYearlyQuery = () =>
+  useQuery({
+    queryKey: ['admin', 'analytics-yearly'],
+    queryFn: () => api.get('/analytics/yearly').then(res => res.data),
+  });
+
 const createInvalidatingMutation = (mutationFn, keys) => {
   return () => {
     const queryClient = useQueryClient();

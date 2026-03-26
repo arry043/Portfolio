@@ -7,10 +7,10 @@ const CTAButtons = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col items-center gap-3 pt-3 sm:flex-row sm:justify-center lg:justify-start">
+    <div className="flex flex-col items-center gap-4 pt-4 sm:flex-row sm:justify-center lg:justify-start">
       <Button
         variant="primary"
-        className="w-full gap-2 sm:w-auto"
+        className="w-full gap-2 sm:w-auto px-6 py-3 text-[15px] sm:text-base font-semibold"
         onClick={() => navigate('/projects')}
       >
         View Projects
@@ -18,7 +18,7 @@ const CTAButtons = () => {
       </Button>
       <Button
         variant="secondary"
-        className="w-full gap-2 sm:w-auto"
+        className="w-full gap-2 sm:w-auto px-6 py-3 text-[15px] sm:text-base font-semibold"
         onClick={() => navigate('/contact')}
       >
         Contact Me

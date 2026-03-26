@@ -356,6 +356,17 @@ const GlobalChatbot = () => {
         messageIdRef.current += 1;
         const pendingId = messageIdRef.current;
 
+        // Track chatbot interaction 
+        try {
+            api.post('/analytics/event', {
+                page: window.location.pathname,
+                type: 'chatbot',
+                delta: 1
+            });
+        } catch (err) {
+            // Silently fail telemetry
+        }
+
         setMessages((previous) => [
             ...previous,
             {

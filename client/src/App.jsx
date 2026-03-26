@@ -9,6 +9,7 @@ import {
   useLocation,
 } from 'react-router-dom';
 import Navbar from './components/navigation/Navbar';
+import HomeFooter from './components/home/HomeFooter';
 import Container from './components/layout/Container';
 import SectionWrapper from './components/layout/SectionWrapper';
 import Button from './components/ui/Button';
@@ -17,6 +18,7 @@ import GlobalChatbot from './components/chatbot/GlobalChatbot';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SSOCallback from './pages/SSOCallback';
+import { usePageTracking } from './hooks/usePageTracking';
 import './index.css';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -49,6 +51,9 @@ const PageLoading = () => (
 const AppShell = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+
+  // Activate tracking globally
+  usePageTracking();
 
   return (
     <div className="flex min-h-screen flex-col bg-dark-primary font-sans text-text-primary selection:bg-zinc-700/50">
@@ -111,6 +116,7 @@ const AppShell = () => {
           </AnimatePresence>
         </Suspense>
       </main>
+      {!isAdminRoute ? <HomeFooter /> : null}
     </div>
   );
 };

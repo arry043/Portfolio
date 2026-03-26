@@ -1,8 +1,11 @@
 import { memo } from 'react';
 import SectionWrapper from '../layout/SectionWrapper';
 import Container from '../layout/Container';
+import { useResumeQuery } from '../../hooks/usePortfolioApi';
 
-const HomeFooter = ({ name = 'Your Name' }) => {
+const HomeFooter = () => {
+  const { data } = useResumeQuery();
+  const name = data?.item?.profile?.name || 'Mohd Arif Ansari';
   return (
     <SectionWrapper id="footer" bgVariant="secondary" className="py-6">
       <Container>
