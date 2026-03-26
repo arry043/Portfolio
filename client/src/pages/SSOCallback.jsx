@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { useAuth, useUser, AuthenticateWithRedirectCallback } from '@clerk/react';
+import { useAuth, useUser, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import axios from 'axios';
+import axiosInstance from '../lib/axios';
 import SectionWrapper from '../components/layout/SectionWrapper';
 import Container from '../components/layout/Container';
 
@@ -19,7 +19,7 @@ const SSOCallback = () => {
       if (isAuthLoaded && isUserLoaded && isSignedIn && user) {
         try {
           const token = await getToken();
-          const response = await axios.post('http://localhost:5001/api/v1/auth/google', {
+          const response = await axiosInstance.post('/auth/google', {
             token,
             email: user.primaryEmailAddress.emailAddress,
             name: user.fullName

@@ -10,7 +10,13 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import Button from "../ui/Button";
 import useAuthStore from "../../store/useAuthStore";
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/react";
+import {
+    SignedIn,
+    SignedOut,
+    SignInButton,
+    SignUpButton,
+    UserButton,
+} from "@clerk/clerk-react";
 
 const BASE_NAV_ITEMS = [
     { id: "experience", label: "Experience", path: "/experience" },
@@ -234,8 +240,8 @@ const Navbar = () => {
                                 isCompact ? "" : "border-l border-zinc-800 pl-3"
                             }`}
                         >
-                            <Show when="signed-out">
-                                <SignInButton mode="modal">
+                            <SignedOut>
+                                <SignInButton>
                                     <Button
                                         variant="secondary"
                                         className="h-8 px-3 py-1 text-sm"
@@ -243,8 +249,9 @@ const Navbar = () => {
                                         Login
                                     </Button>
                                 </SignInButton>
-                                {!isCompact ? (
-                                    <SignUpButton mode="modal">
+
+                                {!isCompact && (
+                                    <SignUpButton>
                                         <Button
                                             variant="primary"
                                             className="h-8 px-3 py-1 text-sm"
@@ -252,11 +259,12 @@ const Navbar = () => {
                                             Sign Up
                                         </Button>
                                     </SignUpButton>
-                                ) : null}
-                            </Show>
-                            <Show when="signed-in">
+                                )}
+                            </SignedOut>
+
+                            <SignedIn>
                                 <UserButton />
-                            </Show>
+                            </SignedIn>
                         </div>
                     </div>
                 </div>
@@ -288,8 +296,8 @@ const Navbar = () => {
                                 ))}
 
                                 <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-800 pt-3">
-                                    <Show when="signed-out">
-                                        <SignInButton mode="modal">
+                                    <SignedOut>
+                                        <SignInButton>
                                             <Button
                                                 variant="secondary"
                                                 className="h-8 px-3 py-1 text-sm"
@@ -297,7 +305,7 @@ const Navbar = () => {
                                                 Login
                                             </Button>
                                         </SignInButton>
-                                        <SignUpButton mode="modal">
+                                        <SignUpButton>
                                             <Button
                                                 variant="primary"
                                                 className="h-8 px-3 py-1 text-sm"
@@ -305,10 +313,10 @@ const Navbar = () => {
                                                 Sign Up
                                             </Button>
                                         </SignUpButton>
-                                    </Show>
-                                    <Show when="signed-in">
+                                    </SignedOut>
+                                    <SignedIn>
                                         <UserButton />
-                                    </Show>
+                                    </SignedIn>
                                 </div>
                             </div>
                         </Motion.div>

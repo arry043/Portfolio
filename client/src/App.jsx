@@ -19,6 +19,10 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import SSOCallback from './pages/SSOCallback';
 import { usePageTracking } from './hooks/usePageTracking';
+import { useAuth, useUser } from '@clerk/clerk-react';
+import useAuthStore from './store/useAuthStore';
+import axiosInstance from './lib/axios';
+import { useEffect } from 'react';
 import './index.css';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -48,6 +52,36 @@ const PageLoading = () => (
   </SectionWrapper>
 );
 
+const AuthSync = () => {
+  const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded: isUserLoaded, user } = useUser();
+  const login = useAuthStore(state => state.login);
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  
+  useEffect(() => {
+    const syncToken = async () => {
+      // Sync Clerk session to Database if they signed in via Clerk but aren't logged in internally
+      if (isAuthLoaded && isUserLoaded && isSignedIn && user && !isAuthenticated) {
+        try {
+          console.log(`[AUTH SYNC] Syncing Clerk session with backend...`);
+          const token = await getToken();
+          const response = await axiosInstance.post('/auth/google', {
+            token,
+            email: user.primaryEmailAddress.emailAddress,
+            name: user.fullName
+          });
+          login(response.data.user, response.data.token);
+          console.log(`[AUTH SYNC] Backend sync successful`);
+        } catch (error) {
+          console.error(`[AUTH SYNC ERROR] Failed to sync session via global listener`, error);
+        }
+      }
+    };
+    syncToken();
+  }, [isAuthLoaded, isUserLoaded, isSignedIn, user, isAuthenticated, getToken, login]);
+  return null;
+};
+
 const AppShell = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -59,6 +93,7 @@ const AppShell = () => {
     <div className="flex min-h-screen flex-col bg-dark-primary font-sans text-text-primary selection:bg-zinc-700/50">
       {!isAdminRoute ? <Navbar /> : null}
       {!isAdminRoute ? <GlobalChatbot /> : null}
+      <AuthSync />
       <main className="flex-grow">
         <Suspense fallback={<PageLoading />}>
           <AnimatePresence mode="wait">

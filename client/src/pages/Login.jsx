@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
-import { useSignIn } from '@clerk/react';
+import { SignInButton } from '@clerk/clerk-react';
 import useAuthStore from '../store/useAuthStore';
 import AuthForm from '../components/auth/AuthForm';
 import InputField from '../components/auth/InputField';
@@ -24,9 +24,6 @@ const Login = () => {
   const navigate = useNavigate();
   const login = useAuthStore(state => state.login);
   const toast = useToast();
-  
-  // Clerk setup
-  const { isLoaded, signIn } = useSignIn();
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(loginSchema)
@@ -60,20 +57,6 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    if (!isLoaded) return;
-    try {
-      await signIn.authenticateWithRedirect({
-        strategy: 'oauth_google',
-        redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/sso-callback'
-      });
-    } catch {
-      setServerError('Failed to initialize Google login');
-      toast.error('Failed to initialize Google login');
-    }
-  };
-
   return (
     <SectionWrapper bgVariant="hero" className="min-h-[calc(100vh-4rem)] flex items-center justify-center pt-20">
       <Container>
@@ -93,10 +76,18 @@ const Login = () => {
             <div className="flex-grow border-t border-zinc-800"></div>
           </div>
 
-          <Button type="button" variant="secondary" onClick={handleGoogleLogin} className="w-full flex items-center gap-2">
-            <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-            Google
-          </Button>
+          {/* <SignInButton mode="modal">
+            <Button type="button" variant="secondary" className="w-full flex items-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+              Google
+            </Button>
+          </SignInButton> */}
+          <SignInButton>
+            <Button type="button" variant="secondary" className="w-full flex items-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+              Login with Google
+            </Button>
+          </SignInButton>
 
           <p className="text-center text-zinc-400 text-sm mt-6">
             Don't have an account? <Link to="/register" className="text-white hover:underline transition-all font-medium">Sign up</Link>

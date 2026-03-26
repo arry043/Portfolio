@@ -8,9 +8,11 @@ import { verifyToken } from '@clerk/clerk-sdk-node';
 export const registerUser = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
+    console.log(`[AUTH DEBUG] Register request received for email: ${email}`);
 
     const userExists = await User.findOne({ email });
     if (userExists) {
+      console.log(`[AUTH DEBUG] Registration failed: Email ${email} already in use`);
       res.status(400);
       throw new Error('User already exists');
     }
@@ -25,12 +27,15 @@ export const registerUser = async (req, res, next) => {
       provider: 'local'
     });
 
+    console.log(`[AUTH DEBUG] Registration successful for email: ${email}`);
+
     res.status(201).json({
       success: true,
       token: generateToken(user._id, user.role),
       user: { _id: user._id, name: user.name, email: user.email, role: user.role }
     });
   } catch (error) {
+    console.error(`[AUTH ERROR] Registration failed: ${error.message}`);
     next(error);
   }
 };
@@ -75,6 +80,13 @@ export const loginUser = async (req, res, next) => {
 export const googleAuth = async (req, res, next) => {
   try {
     const { token, email, name } = req.body;
+    console.log(`[AUTH DEBUG] Google Auth request received for email: ${email}`);
+
+    if (!process.env.CLERK_SECRET_KEY) {
+      console.error(`[AUTH ERROR] CLERK_SECRET_KEY is missing from environment variables`);
+      res.status(500);
+      throw new Error('Server configuration error: Clerk keys missing');
+    }
 
     // Clerk JWT Verification intercept
     const decoded = await verifyToken(token, {
@@ -82,12 +94,15 @@ export const googleAuth = async (req, res, next) => {
     });
 
     if (!decoded) {
+      console.log(`[AUTH DEBUG] Clerk token verification failed for email: ${email}`);
       res.status(401);
       throw new Error('Invalid or expired Clerk token payload');
     }
 
+    console.log(`[AUTH DEBUG] Clerk token verified. Looking up user: ${email}`);
     let user = await User.findOne({ email });
     if (!user) {
+      console.log(`[AUTH DEBUG] Creating new user from Google Auth: ${email}`);
       user = await User.create({
         name,
         email,
@@ -95,12 +110,14 @@ export const googleAuth = async (req, res, next) => {
       });
     } // Overwrites role dynamically if they had one stored
 
+    console.log(`[AUTH DEBUG] Google Auth successful. Generating token for user: ${user._id}`);
     res.json({
       success: true,
       token: generateToken(user._id, user.role),
       user: { _id: user._id, name: user.name, email: user.email, role: user.role }
     });
   } catch (error) {
+    console.error(`[AUTH ERROR] Google Auth failed: ${error.message}`);
     res.status(401);
     next(new Error('Google synchronization failed via Clerk SDK'));
   }
