@@ -14,15 +14,15 @@ import Container from './components/layout/Container';
 import SectionWrapper from './components/layout/SectionWrapper';
 import Button from './components/ui/Button';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import PublicAuthRoute from './components/auth/PublicAuthRoute';
 import GlobalChatbot from './components/chatbot/GlobalChatbot';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SSOCallback from './pages/SSOCallback';
 import { usePageTracking } from './hooks/usePageTracking';
-import { useAuth, useUser } from '@clerk/clerk-react';
 import useAuthStore from './store/useAuthStore';
-import axiosInstance from './lib/axios';
 import { useEffect } from 'react';
+import useBackendAuthSync from './hooks/useBackendAuthSync';
 import './index.css';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -53,32 +53,22 @@ const PageLoading = () => (
 );
 
 const AuthSync = () => {
-  const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useAuth();
-  const { isLoaded: isUserLoaded, user } = useUser();
-  const login = useAuthStore(state => state.login);
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
-  
+  const { syncSession } = useBackendAuthSync();
+  const logout = useAuthStore((state) => state.logout);
+
   useEffect(() => {
     const syncToken = async () => {
-      // Sync Clerk session to Database if they signed in via Clerk but aren't logged in internally
-      if (isAuthLoaded && isUserLoaded && isSignedIn && user && !isAuthenticated) {
-        try {
-          console.log(`[AUTH SYNC] Syncing Clerk session with backend...`);
-          const token = await getToken();
-          const response = await axiosInstance.post('/auth/google', {
-            token,
-            email: user.primaryEmailAddress.emailAddress,
-            name: user.fullName
-          });
-          login(response.data.user, response.data.token);
-          console.log(`[AUTH SYNC] Backend sync successful`);
-        } catch (error) {
-          console.error(`[AUTH SYNC ERROR] Failed to sync session via global listener`, error);
-        }
+      try {
+        await syncSession();
+      } catch {
+        // Keep backend JWT session as source of truth when sync fails.
+        logout();
       }
     };
+
     syncToken();
-  }, [isAuthLoaded, isUserLoaded, isSignedIn, user, isAuthenticated, getToken, login]);
+  }, [syncSession, logout]);
+
   return null;
 };
 
@@ -106,8 +96,10 @@ const AppShell = () => {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/ai" element={<Navigate to="/" replace />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              <Route element={<PublicAuthRoute />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+              </Route>
               <Route path="/sso-callback" element={<SSOCallback />} />
 
               <Route element={<ProtectedRoute />}>

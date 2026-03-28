@@ -10,7 +10,7 @@ const sidebarLinkClass = ({ isActive }) =>
       : 'text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100'
   }`;
 
-const AdminSidebar = ({ open, onClose, onLogout }) => {
+const AdminSidebar = ({ open, onClose, onLogout, isLoggingOut = false }) => {
   return (
     <>
       {open ? (
@@ -54,10 +54,11 @@ const AdminSidebar = ({ open, onClose, onLogout }) => {
         <button
           type="button"
           onClick={onLogout}
-          className="absolute bottom-3 left-3 right-3 inline-flex items-center justify-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 transition-colors hover:bg-zinc-800"
+          disabled={isLoggingOut}
+          className="absolute bottom-3 left-3 right-3 inline-flex items-center justify-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
           <LogOut className="h-4 w-4" />
-          Logout
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
         </button>
       </aside>
     </>

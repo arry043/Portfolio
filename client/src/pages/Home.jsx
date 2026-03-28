@@ -3,6 +3,7 @@ import HeroSection from '../components/hero/HeroSection';
 import HomeWhatIAm from '../components/home/HomeWhatIAm';
 import HomeAchievements from '../components/home/HomeAchievements';
 import HomeHighlights from '../components/home/HomeHighlights';
+import CodingProfilesHighlights from '../components/sections/CodingProfilesHighlights';
 import HomeContactCta from '../components/home/HomeContactCta';
 import { useCertificatesQuery, useProjectsQuery, useResumeQuery } from '../hooks/usePortfolioApi';
 import { useToast } from '../context/ToastContext';
@@ -47,6 +48,7 @@ const Home = () => {
         experienceCount={(resume.experience || []).length}
       />
       <HomeHighlights projects={projects} skills={resume.skills} />
+      <CodingProfilesHighlights />
       <HomeContactCta />
     </>
   );

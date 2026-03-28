@@ -1,15 +1,15 @@
 import { memo, useMemo, useState } from 'react';
 import { Menu } from 'lucide-react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import useAuthStore from '../../store/useAuthStore';
 import AdminSidebar from './AdminSidebar';
 import { adminNavItems } from './admin.constants';
+import useUnifiedLogout from '../../hooks/useUnifiedLogout';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const logout = useAuthStore((state) => state.logout);
+  const { logoutEverywhere, isLoggingOut } = useUnifiedLogout();
 
   const activeLabel = useMemo(() => {
     return (
@@ -18,8 +18,8 @@ const AdminLayout = () => {
     );
   }, [location.pathname]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logoutEverywhere();
     navigate('/login');
   };
 
@@ -29,6 +29,7 @@ const AdminLayout = () => {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
       />
 
       <div className="lg:pl-64">

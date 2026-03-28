@@ -45,6 +45,45 @@ export const MODE_HIGHLIGHTS = Object.freeze({
   ],
 });
 
+export const HERO_SOCIAL_LINKS = Object.freeze([
+  {
+    name: 'LinkedIn',
+    icon: 'Linkedin',
+    url: 'https://www.linkedin.com/in/arryquerry/', // Replace with actual or placeholder
+    priority: 1,
+  },
+  {
+    name: 'GitHub',
+    icon: 'Github',
+    url: 'https://github.com/arry043', // Replace with actual or placeholder
+    priority: 2,
+  },
+  {
+    name: 'LeetCode',
+    icon: 'Code',
+    url: 'https://leetcode.com/u/arry03/', // Replace with actual or placeholder
+    priority: 3,
+  },
+  {
+    name: 'GeeksForGeeks',
+    icon: 'GFG',
+    url: 'https://www.geeksforgeeks.org/profile/arifqurn60?tab=activity', // Replace with actual or placeholder
+    priority: 4,
+  },
+]);
+
+export const HERO_CTA_CONFIG = Object.freeze({
+  primary: {
+    label: 'Hire Me',
+    action: 'scroll_to_contact',
+  },
+  secondary: {
+    label: 'Download Resume',
+    action: 'download_resume',
+    url: '/resume.pdf', // Placeholder
+  },
+});
+
 export const getValidatedMode = (candidateMode) => {
   const parsedMode = modeSchema.safeParse(candidateMode);
   return parsedMode.success ? parsedMode.data : DEFAULT_MODE;

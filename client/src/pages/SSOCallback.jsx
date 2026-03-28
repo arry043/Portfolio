@@ -1,39 +1,37 @@
 import React, { useEffect } from 'react';
-import { useAuth, useUser, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
+import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
-import useAuthStore from '../store/useAuthStore';
-import axiosInstance from '../lib/axios';
+import useBackendAuthSync from '../hooks/useBackendAuthSync';
 import SectionWrapper from '../components/layout/SectionWrapper';
 import Container from '../components/layout/Container';
 
 const SSOCallback = () => {
-  const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useAuth();
-  const { isLoaded: isUserLoaded, user } = useUser();
   const navigate = useNavigate();
-  const login = useAuthStore(state => state.login);
+  const { syncSession } = useBackendAuthSync();
 
   useEffect(() => {
-    // Sync Clerk session to our Database and JWT format immediately upon retrieval
+    let isMounted = true;
+
     const exchangeToken = async () => {
-      // Must wait for clerk session to become explicitly tied
-      if (isAuthLoaded && isUserLoaded && isSignedIn && user) {
-        try {
-          const token = await getToken();
-          const response = await axiosInstance.post('/auth/google', {
-            token,
-            email: user.primaryEmailAddress.emailAddress,
-            name: user.fullName
-          });
-          login(response.data.user, response.data.token);
-          navigate(response.data.user?.role === 'admin' ? '/admin' : '/');
-        } catch (error) {
-          console.error("SSO Exchange failed", error);
+      try {
+        const result = await syncSession({ force: true });
+        const role = result?.user?.role;
+        if (isMounted) {
+          navigate(role === 'admin' ? '/admin' : '/');
+        }
+      } catch {
+        if (isMounted) {
           navigate('/login');
         }
       }
     };
+
     exchangeToken();
-  }, [isAuthLoaded, isUserLoaded, isSignedIn, user, getToken, navigate, login]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [syncSession, navigate]);
 
   return (
     <SectionWrapper bgVariant="hero" className="min-h-[calc(100vh-4rem)] flex items-center justify-center">

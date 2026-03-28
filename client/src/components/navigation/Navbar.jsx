@@ -8,15 +8,7 @@ import React, {
 import { AnimatePresence, motion as Motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import Button from "../ui/Button";
-import useAuthStore from "../../store/useAuthStore";
-import {
-    SignedIn,
-    SignedOut,
-    SignInButton,
-    SignUpButton,
-    UserButton,
-} from "@clerk/clerk-react";
+import ProfileMenu from "./ProfileMenu";
 
 const BASE_NAV_ITEMS = [
     { id: "experience", label: "Experience", path: "/experience" },
@@ -55,21 +47,7 @@ const Navbar = () => {
         () => normalizePathname(location.pathname),
         [location.pathname],
     );
-    const { user } = useAuthStore();
-
-    const navItems = useMemo(() => {
-        const items = [...BASE_NAV_ITEMS];
-
-        if (user?.role === "admin") {
-            items.push({
-                id: "admin",
-                label: "Admin",
-                path: "/admin/dashboard",
-            });
-        }
-
-        return items;
-    }, [user?.role]);
+    const navItems = BASE_NAV_ITEMS;
 
     const closeMenu = useCallback(() => {
         setIsOpen(false);
@@ -146,10 +124,6 @@ const Navbar = () => {
         };
     }, [isOpen, closeMenu]);
 
-    useEffect(() => {
-        closeMenu();
-    }, [closeMenu, location.pathname]);
-
     const desktopLinkClass = useCallback(
         (path) =>
             `rounded-md border px-2.5 py-1 text-sm font-medium transition-all duration-300 ${
@@ -179,18 +153,21 @@ const Navbar = () => {
                     >
                         Arif Ansari
                     </Link>
-                    <button
-                        type="button"
-                        data-menu-toggle
-                        onClick={toggleMenu}
-                        className="rounded-md border border-zinc-800 bg-zinc-900 p-1.5 text-zinc-300 hover:bg-zinc-800"
-                    >
-                        {isOpen ? (
-                            <X className="h-4 w-4" />
-                        ) : (
-                            <Menu className="h-4 w-4" />
-                        )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <ProfileMenu onActionComplete={closeMenu} />
+                        <button
+                            type="button"
+                            data-menu-toggle
+                            onClick={toggleMenu}
+                            className="rounded-md border border-zinc-800 bg-zinc-900 p-1.5 text-zinc-300 hover:bg-zinc-800"
+                        >
+                            {isOpen ? (
+                                <X className="h-4 w-4" />
+                            ) : (
+                                <Menu className="h-4 w-4" />
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 <div
@@ -236,35 +213,11 @@ const Navbar = () => {
                         </nav>
 
                         <div
-                            className={`hidden items-center gap-2 lg:flex ${
+                            className={`hidden items-center lg:flex ${
                                 isCompact ? "" : "border-l border-zinc-800 pl-3"
                             }`}
                         >
-                            <SignedOut>
-                                <SignInButton>
-                                    <Button
-                                        variant="secondary"
-                                        className="h-8 px-3 py-1 text-sm"
-                                    >
-                                        Login
-                                    </Button>
-                                </SignInButton>
-
-                                {!isCompact && (
-                                    <SignUpButton>
-                                        <Button
-                                            variant="primary"
-                                            className="h-8 px-3 py-1 text-sm"
-                                        >
-                                            Sign Up
-                                        </Button>
-                                    </SignUpButton>
-                                )}
-                            </SignedOut>
-
-                            <SignedIn>
-                                <UserButton />
-                            </SignedIn>
+                            <ProfileMenu />
                         </div>
                     </div>
                 </div>
@@ -295,29 +248,6 @@ const Navbar = () => {
                                     </Link>
                                 ))}
 
-                                <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-800 pt-3">
-                                    <SignedOut>
-                                        <SignInButton>
-                                            <Button
-                                                variant="secondary"
-                                                className="h-8 px-3 py-1 text-sm"
-                                            >
-                                                Login
-                                            </Button>
-                                        </SignInButton>
-                                        <SignUpButton>
-                                            <Button
-                                                variant="primary"
-                                                className="h-8 px-3 py-1 text-sm"
-                                            >
-                                                Sign Up
-                                            </Button>
-                                        </SignUpButton>
-                                    </SignedOut>
-                                    <SignedIn>
-                                        <UserButton />
-                                    </SignedIn>
-                                </div>
                             </div>
                         </Motion.div>
                     ) : null}
