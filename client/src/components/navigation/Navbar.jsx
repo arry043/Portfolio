@@ -14,7 +14,7 @@ const BASE_NAV_ITEMS = [
     { id: "experience", label: "Experience", path: "/experience" },
     { id: "projects", label: "Projects", path: "/projects" },
     { id: "certificates", label: "Certificates", path: "/certificates" },
-    { id: "games", label: "Games", path: "/games" },
+    { id: "games", label: "Labs", path: "/games" },
     { id: "about", label: "About", path: "/about" },
     { id: "contact", label: "Contact", path: "/contact" },
 ];

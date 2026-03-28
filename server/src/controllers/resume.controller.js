@@ -1,16 +1,12 @@
 import { resumeData } from '../data/resume.data.js';
 import Experience from '../models/Experience.js';
 import { ensureSeedData } from '../services/seedData.service.js';
-import { formatExperiencePeriod } from '../services/date.service.js';
-import {
-  buildTimelineSortStages,
-  hideTimelineSortFieldStage,
-} from '../services/timelineSort.service.js';
 import {
   ensureDefaultResumeSelection,
   setDefaultResumeById,
 } from '../services/defaultResume.service.js';
 import { getCloudinarySecureUrl } from '../services/cloudinary.service.js';
+import { mapTimelineExperiences } from '../services/experienceTimeline.service.js';
 
 const buildDownloadUrl = (fileUrl = '') => {
   if (!fileUrl.includes('res.cloudinary.com')) {
@@ -51,18 +47,19 @@ export const getResumeContent = async (req, res, next) => {
   try {
     await ensureSeedData();
 
-    const sortAlias = '__timelineSortDate';
-    const experienceItems = await Experience.aggregate([
-      ...buildTimelineSortStages(['startDate'], { alias: sortAlias }),
-      hideTimelineSortFieldStage(sortAlias),
-    ]);
-    const dynamicExperience = experienceItems.map((item) => ({
+    const experienceItems = await Experience.find().lean();
+    const timelineItems = mapTimelineExperiences(experienceItems);
+    const dynamicExperience = timelineItems.map((item) => ({
       role: item.role,
       company: item.company,
-      period: formatExperiencePeriod(item),
+      duration: item.duration || '—',
+      dateRange: item.dateRange || item.period || '—',
+      period: item.dateRange || item.period || '—',
       startDate: item.startDate || null,
       endDate: item.endDate || null,
       isCurrentlyWorking: Boolean(item.isCurrentlyWorking),
+      isPresent: Boolean(item.isPresent),
+      description: item.description || '',
       highlights: item.description ? [item.description] : [],
     }));
 

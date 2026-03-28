@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { motion as Motion } from 'framer-motion';
 import ExperienceCard from './ExperienceCard';
 import EmptyState from '../common/EmptyState';
@@ -17,41 +17,33 @@ const ExperienceTimeline = ({ experiences = [] }) => {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isHoveringTimeline, setIsHoveringTimeline] = useState(false);
 
-  // Sort experiences descending by Date
-  const sortedExperiences = [...experiences].sort((a, b) => {
-    return new Date(b.startDate || 0) - new Date(a.startDate || 0);
-  });
+  const timelineExperiences = useMemo(
+    () => (Array.isArray(experiences) ? experiences.filter(Boolean) : []),
+    [experiences]
+  );
+
+  const resolvedActiveIndex =
+    timelineExperiences.length === 1 ? 0 : isHoveringTimeline ? -1 : activeIndex;
 
   useEffect(() => {
-    // If empty or only 1 item, no need to loop the active index
-    if (sortedExperiences.length <= 1) {
-      if (sortedExperiences.length === 1) setActiveIndex(0);
+    // If empty/1 item, no need to loop active index.
+    if (timelineExperiences.length <= 1 || isHoveringTimeline) {
       return;
     }
 
-    // If user is hovering over the timeline, we pause the auto-cycling so they can interact manually
-    if (isHoveringTimeline) {
-      setActiveIndex(-1);
-      return;
-    }
+    const sliceDuration = ANIMATION_DURATION_MS / timelineExperiences.length;
+    const startedAt = Date.now();
 
-    // Sync active index based on an interval
-    // If line takes 6000ms to go top-to-bottom, each node gets a segment of time
-    const sliceDuration = ANIMATION_DURATION_MS / sortedExperiences.length;
-    
-    // We update active index progressively
-    let start = Date.now();
-    
     const interval = setInterval(() => {
-      const elapsed = (Date.now() - start) % ANIMATION_DURATION_MS;
+      const elapsed = (Date.now() - startedAt) % ANIMATION_DURATION_MS;
       const currentIndex = Math.floor(elapsed / sliceDuration);
       setActiveIndex(currentIndex);
     }, 100);
 
     return () => clearInterval(interval);
-  }, [sortedExperiences.length, isHoveringTimeline]);
+  }, [timelineExperiences.length, isHoveringTimeline]);
 
-  if (sortedExperiences.length === 0) {
+  if (timelineExperiences.length === 0) {
     return (
       <EmptyState
         message="No Experience Data"
@@ -66,6 +58,7 @@ const ExperienceTimeline = ({ experiences = [] }) => {
       onMouseEnter={() => setIsHoveringTimeline(true)}
       onMouseLeave={() => setIsHoveringTimeline(false)}
       onTouchStart={() => setIsHoveringTimeline(true)}
+      onTouchEnd={() => setIsHoveringTimeline(false)}
     >
       <Motion.div 
         variants={containerVariants}
@@ -75,9 +68,9 @@ const ExperienceTimeline = ({ experiences = [] }) => {
         className="flex flex-col gap-6 relative py-4"
       >
         {/* Background Static Line */}
-        <div className="absolute left-4 sm:left-6 top-0 bottom-0 w-[2px] bg-zinc-800 rounded-full overflow-hidden">
+        <div className="absolute left-4 sm:left-6 lg:left-[88px] top-0 bottom-0 w-[2px] bg-zinc-800 rounded-full overflow-hidden">
           {/* Animated Glowing Line overlaid on the static line */}
-          {sortedExperiences.length > 1 && !isHoveringTimeline && (
+          {timelineExperiences.length > 1 && !isHoveringTimeline && (
             <Motion.div 
               className="absolute left-0 right-0 w-full h-[30%] bg-gradient-to-b from-transparent via-blue-500 to-purple-500 rounded-full"
               animate={{ 
@@ -92,17 +85,17 @@ const ExperienceTimeline = ({ experiences = [] }) => {
             />
           )}
           {/* Fallback solid active line if single experience or hovering */}
-          {(sortedExperiences.length <= 1 || isHoveringTimeline) && (
+          {(timelineExperiences.length <= 1 || isHoveringTimeline) && (
             <div className="absolute left-0 right-0 top-0 bottom-0 w-full bg-zinc-700/50 transition-opacity duration-300" />
           )}
         </div>
 
         {/* Experience Cards */}
-        {sortedExperiences.map((exp, index) => (
+        {timelineExperiences.map((exp, index) => (
           <ExperienceCard 
             key={`${exp.company}-${exp.role}-${index}`} 
             experience={exp} 
-            isActive={index === activeIndex}
+            isActive={index === resolvedActiveIndex}
             isInteractive={true}
           />
         ))}

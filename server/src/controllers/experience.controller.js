@@ -1,9 +1,8 @@
 import Experience from '../models/Experience.js';
-import { formatExperiencePeriod } from '../services/date.service.js';
 import {
-  buildTimelineSortStages,
-  hideTimelineSortFieldStage,
-} from '../services/timelineSort.service.js';
+  buildExperienceTimelineMeta,
+  mapTimelineExperiences,
+} from '../services/experienceTimeline.service.js';
 
 const hasOwn = (target, key) => Object.prototype.hasOwnProperty.call(target || {}, key);
 
@@ -25,16 +24,13 @@ const validateExperienceDates = ({ startDate, endDate, isCurrentlyWorking }) => 
 
 export const listExperiences = async (req, res, next) => {
   try {
-    const sortAlias = '__timelineSortDate';
-    const items = await Experience.aggregate([
-      ...buildTimelineSortStages(['startDate'], { alias: sortAlias }),
-      hideTimelineSortFieldStage(sortAlias),
-    ]);
+    const items = await Experience.find().lean();
+    const timelineItems = mapTimelineExperiences(items);
 
     return res.json({
       success: true,
-      items,
-      fallbackMessage: items.length === 0 ? 'No Experience Found!' : null,
+      items: timelineItems,
+      fallbackMessage: timelineItems.length === 0 ? 'No Experience Found!' : null,
     });
   } catch (error) {
     return next(error);
@@ -51,16 +47,19 @@ export const createExperience = async (req, res, next) => {
 
     validateExperienceDates(normalizedPayload);
 
-    const computedDuration = formatExperiencePeriod({
+    const timelineMeta = buildExperienceTimelineMeta({
       startDate: normalizedPayload.startDate,
       endDate: normalizedPayload.endDate,
       isCurrentlyWorking: normalizedPayload.isCurrentlyWorking,
-      duration: normalizedPayload.duration,
     });
+
+    if (!timelineMeta) {
+      throw createBadRequestError('Experience dates are invalid for timeline');
+    }
 
     const item = await Experience.create({
       ...normalizedPayload,
-      duration: computedDuration,
+      duration: timelineMeta.duration,
     });
 
     return res.status(201).json({ success: true, item });
@@ -107,14 +106,17 @@ export const updateExperience = async (req, res, next) => {
     const shouldRegenerateDuration =
       !hasDuration || (typeof payload.duration === 'string' && !payload.duration.trim());
 
-    const nextDuration = shouldRegenerateDuration
-      ? formatExperiencePeriod({
-          startDate: mergedStartDate,
-          endDate: mergedEndDate,
-          isCurrentlyWorking: mergedIsCurrentlyWorking,
-          duration: existingItem.duration,
-        })
-      : payload.duration?.trim();
+    const timelineMeta = buildExperienceTimelineMeta({
+      startDate: mergedStartDate,
+      endDate: mergedEndDate,
+      isCurrentlyWorking: mergedIsCurrentlyWorking,
+    });
+
+    if (!timelineMeta) {
+      throw createBadRequestError('Experience dates are invalid for timeline');
+    }
+
+    const nextDuration = shouldRegenerateDuration ? timelineMeta.duration : payload.duration?.trim();
 
     const updatePayload = {
       ...payload,

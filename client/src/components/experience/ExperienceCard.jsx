@@ -24,15 +24,27 @@ const ExperienceCard = ({ experience, isActive, isInteractive }) => {
   return (
     <Motion.div 
       variants={cardAnimation}
-      className="relative pl-10 sm:pl-14 w-full"
+      className="relative pl-10 sm:pl-14 lg:pl-36 w-full"
       onMouseEnter={handleInteractionStart}
       onMouseLeave={handleInteractionEnd}
       // For mobile tap interaction
       onClick={() => isInteractive && setIsHovered(!isHovered)}
     >
+      {/* Duration: fixed left on desktop */}
+      <Motion.span
+        initial={{ opacity: 0, x: -8 }}
+        animate={{ opacity: currentlyActive ? 1 : 0.7, x: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className={`absolute left-0 top-3 hidden w-[72px] text-right text-xs font-medium tracking-wide lg:block ${
+          currentlyActive ? 'text-zinc-200' : 'text-zinc-500'
+        }`}
+      >
+        {experience.duration || '—'}
+      </Motion.span>
+
       {/* Timeline Node */}
       <div 
-        className={`absolute left-[11px] sm:left-[19px] top-4 w-3 h-3 rounded-full -translate-x-[1px] transition-all duration-500 z-10 
+        className={`absolute left-[11px] sm:left-[19px] lg:left-[83px] top-4 w-3 h-3 rounded-full -translate-x-[1px] transition-all duration-500 z-10 
           ${currentlyActive 
             ? 'bg-white shadow-[0_0_15px_rgba(59,130,246,0.8)] scale-125' 
             : 'bg-zinc-600 scale-100'
@@ -49,6 +61,20 @@ const ExperienceCard = ({ experience, isActive, isInteractive }) => {
           }
         `}
       >
+        {/* Duration: mobile + tablet */}
+        <Motion.span
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: currentlyActive ? 1 : 0.7, y: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className={`mb-2 inline-flex w-fit rounded border px-2 py-0.5 text-xs font-medium lg:hidden ${
+            currentlyActive
+              ? 'border-zinc-700 bg-zinc-900 text-zinc-200'
+              : 'border-zinc-800 bg-zinc-950 text-zinc-500'
+          }`}
+        >
+          {experience.duration || '—'}
+        </Motion.span>
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
           <div>
             <h3 className={`text-base font-bold transition-colors duration-300 ${currentlyActive ? 'text-white' : 'text-zinc-200'}`}>

@@ -72,9 +72,14 @@ export const parseLegacyProjectDate = (value) => {
 };
 
 export const formatExperiencePeriod = (
-  { startDate, endDate, isCurrentlyWorking = false, period = '', duration = '' } = {},
+  { dateRange = '', startDate, endDate, isCurrentlyWorking = false, period = '', duration = '' } = {},
   fallback = 'Date not specified'
 ) => {
+  const normalizedDateRange = String(dateRange || '').trim();
+  if (normalizedDateRange) {
+    return normalizedDateRange;
+  }
+
   const legacyPeriod = String(period || duration || '').trim();
   const startLabel = formatMonthYear(startDate, '');
 
