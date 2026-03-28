@@ -30,6 +30,11 @@ const resumeSchema = new mongoose.Schema(
       enum: ['cloudinary'],
       default: 'cloudinary',
     },
+    isDefault: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   { timestamps: true }
 );

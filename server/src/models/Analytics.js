@@ -31,6 +31,19 @@ const analyticsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    projectViews: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastEventAt: {
+      type: Date,
+      default: null,
+    },
+    lastEventMeta: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   { timestamps: true }
 );

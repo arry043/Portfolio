@@ -57,6 +57,11 @@ const deleteAdminResume = async (id) => {
   return response.data;
 };
 
+const setAdminDefaultResume = async (id) => {
+  const response = await api.patch(`/resume/set-default/${id}`);
+  return response.data;
+};
+
 const fetchAdminCertificates = async () => {
   const response = await api.get('/certificates');
   return response.data;
@@ -244,6 +249,8 @@ export const useAdminAnalyticsSummaryQuery = () =>
   useQuery({
     queryKey: adminQueryKeys.analyticsSummary,
     queryFn: fetchAdminAnalyticsSummary,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
   });
 
 export const useAdminResumesQuery = () =>
@@ -325,6 +332,11 @@ export const useUpdateAdminResumeMutation = createInvalidatingMutation(updateAdm
 export const useDeleteAdminResumeMutation = createInvalidatingMutation(deleteAdminResume, [
   adminQueryKeys.resumes,
 ]);
+
+export const useSetAdminDefaultResumeMutation = createInvalidatingMutation(
+  setAdminDefaultResume,
+  [adminQueryKeys.resumes]
+);
 
 export const useCreateAdminCertificateMutation = createInvalidatingMutation(
   createAdminCertificate,

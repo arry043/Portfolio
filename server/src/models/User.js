@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add an email'],
     unique: true,
+    trim: true,
+    lowercase: true,
     match: [
       /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
       'Please add a valid email address'
@@ -32,6 +34,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['local', 'google'],
     default: 'local'
+  },
+  profileImage: {
+    type: String,
+    trim: true,
+    default: ''
   }
 }, {
   timestamps: true // Automatically manages createdAt and updatedAt

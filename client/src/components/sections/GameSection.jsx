@@ -14,7 +14,11 @@ import { useTrackSectionView } from '../../hooks/useTrackEvent';
 const GameSection = () => {
   const gamesQuery = useGamesQuery();
   const toast = useToast();
-  useTrackSectionView('games');
+  useTrackSectionView('games', {
+    viewType: 'game',
+    viewEndpoint: '/analytics/event',
+    dedupeInSession: true,
+  });
 
   useEffect(() => {
     if (gamesQuery.isError) {

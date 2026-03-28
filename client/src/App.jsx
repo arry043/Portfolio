@@ -21,6 +21,7 @@ import Register from './pages/Register';
 import SSOCallback from './pages/SSOCallback';
 import { usePageTracking } from './hooks/usePageTracking';
 import useAuthStore from './store/useAuthStore';
+import useDefaultResumeStore from './store/useDefaultResumeStore';
 import { useEffect } from 'react';
 import useBackendAuthSync from './hooks/useBackendAuthSync';
 import './index.css';
@@ -72,6 +73,16 @@ const AuthSync = () => {
   return null;
 };
 
+const DefaultResumeSync = () => {
+  const fetchDefaultResume = useDefaultResumeStore((state) => state.fetchDefaultResume);
+
+  useEffect(() => {
+    fetchDefaultResume();
+  }, [fetchDefaultResume]);
+
+  return null;
+};
+
 const AppShell = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -84,6 +95,7 @@ const AppShell = () => {
       {!isAdminRoute ? <Navbar /> : null}
       {!isAdminRoute ? <GlobalChatbot /> : null}
       <AuthSync />
+      <DefaultResumeSync />
       <main className="flex-grow">
         <Suspense fallback={<PageLoading />}>
           <AnimatePresence mode="wait">

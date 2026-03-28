@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { objectIdSchema } from './validateRequest.js';
 
 const resumeCategorySchema = z.enum([
   'fullstack',
@@ -40,5 +41,13 @@ export const deleteAdminResumeSchema = z.object({
   query: z.object({}).passthrough(),
   params: z.object({
     id: z.string().min(1, 'Resume id is required'),
+  }),
+});
+
+export const setDefaultAdminResumeSchema = z.object({
+  body: z.object({}).passthrough(),
+  query: z.object({}).passthrough(),
+  params: z.object({
+    id: objectIdSchema,
   }),
 });

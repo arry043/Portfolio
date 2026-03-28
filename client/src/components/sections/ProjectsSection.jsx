@@ -105,7 +105,13 @@ const ProjectCard = memo(({ project, onOutboundClick }) => {
 const ProjectsSection = () => {
   const [activeFilter, setActiveFilter] = useState('All');
   const toast = useToast();
-  const { trackClick } = useTrackSectionView('projects');
+  const { trackClick } = useTrackSectionView('projects', {
+    viewType: 'project',
+    clickType: 'project',
+    viewEndpoint: '/analytics/project',
+    clickEndpoint: '/analytics/project',
+    dedupeInSession: true,
+  });
 
   const validatedFilter = useMemo(() => {
     const parsedFilter = projectCategorySchema.safeParse(activeFilter);

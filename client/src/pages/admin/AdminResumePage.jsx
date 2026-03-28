@@ -1,22 +1,26 @@
 import { memo, useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import AdminTable from '../../components/admin/AdminTable';
 import AdminFormModal from '../../components/admin/AdminFormModal';
 import ConfirmDialog from '../../components/admin/ConfirmDialog';
 import FileUploadField from '../../components/admin/FileUploadField';
+import ResumePreviewModal from '../../components/admin/ResumePreviewModal';
 import Button from '../../components/ui/Button';
 import { adminResumeSchema } from '../../schemas/adminForms';
 import {
   useAdminResumesQuery,
   useCreateAdminResumeMutation,
   useDeleteAdminResumeMutation,
+  useSetAdminDefaultResumeMutation,
   useUpdateAdminResumeMutation,
 } from '../../hooks/useAdminApi';
 import { useToast } from '../../context/ToastContext';
 import { getErrorMessage } from '../../lib/api';
 import SectionSkeleton from '../../components/common/SectionSkeleton';
+import useDefaultResumeStore from '../../store/useDefaultResumeStore';
+import { isCloudinaryResumeUrl } from '../../lib/resumeDownload';
 
 const CATEGORY_OPTIONS = ['fullstack', 'backend', 'frontend', 'python', 'ai'];
 const MAX_RESUME_BYTES = 5 * 1024 * 1024;
@@ -25,6 +29,7 @@ const AdminResumePage = () => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
+  const [previewingItem, setPreviewingItem] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -32,7 +37,11 @@ const AdminResumePage = () => {
   const createMutation = useCreateAdminResumeMutation();
   const updateMutation = useUpdateAdminResumeMutation();
   const deleteMutation = useDeleteAdminResumeMutation();
+  const setDefaultMutation = useSetAdminDefaultResumeMutation();
   const toast = useToast();
+  const setDefaultResume = useDefaultResumeStore((state) => state.setDefaultResume);
+  const clearDefaultResume = useDefaultResumeStore((state) => state.clearDefaultResume);
+  const items = useMemo(() => resumesQuery.data?.items || [], [resumesQuery.data]);
 
   const form = useForm({
     resolver: zodResolver(adminResumeSchema),
@@ -50,7 +59,21 @@ const AdminResumePage = () => {
     }
   }, [resumesQuery.error, resumesQuery.isError, toast]);
 
-  const items = resumesQuery.data?.items || [];
+  useEffect(() => {
+    if (!resumesQuery.isSuccess) {
+      return;
+    }
+
+    const selectedDefault = items.find((item) => item.isDefault);
+    if (selectedDefault) {
+      setDefaultResume(selectedDefault);
+      return;
+    }
+
+    if (items.length === 0) {
+      clearDefaultResume();
+    }
+  }, [resumesQuery.isSuccess, items, setDefaultResume, clearDefaultResume]);
 
   const modalTitle = useMemo(
     () => (editingItem ? 'Update Resume' : 'Upload Resume'),
@@ -178,6 +201,39 @@ const AdminResumePage = () => {
     }
   };
 
+  const handleSetDefaultResume = async (item) => {
+    const isCloudinaryFile = item?.isCloudinaryFile ?? isCloudinaryResumeUrl(item?.fileUrl);
+    if (!item?._id || item.isDefault || !isCloudinaryFile) {
+      if (!isCloudinaryFile) {
+        toast.warning(
+          'This resume has an old local path. Upload/replace it to generate a Cloudinary URL.',
+          'Cloudinary URL Required'
+        );
+      }
+      return;
+    }
+
+    const loadingToastId = toast.loading('Updating default resume...');
+    try {
+      const response = await setDefaultMutation.mutateAsync(item._id);
+      const updatedDefault = response?.item || item;
+      setDefaultResume(updatedDefault);
+      toast.update(loadingToastId, {
+        type: 'success',
+        title: 'Default Resume Updated',
+        message: 'Default resume updated.',
+        persistent: false,
+      });
+    } catch (error) {
+      toast.update(loadingToastId, {
+        type: 'error',
+        title: 'Default Update Failed',
+        message: getErrorMessage(error),
+        persistent: false,
+      });
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -196,24 +252,82 @@ const AdminResumePage = () => {
             { key: 'title', header: 'Title' },
             { key: 'category', header: 'Category' },
             {
+              key: 'isDefault',
+              header: 'Status',
+              render: (row) =>
+                row.isDefault ? (
+                  <span className="inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+                    Default
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-500">Standard</span>
+                ),
+            },
+            {
               key: 'fileUrl',
               header: 'File',
-              render: (row) => (
-                <a
-                  href={row.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-zinc-300 underline-offset-4 hover:text-zinc-100 hover:underline"
-                >
-                  Open File
-                </a>
-              ),
+              render: (row) => {
+                const canOpenFile = row.isCloudinaryFile ?? isCloudinaryResumeUrl(row.fileUrl);
+
+                if (!canOpenFile) {
+                  return <span className="text-xs text-zinc-500">Legacy path unavailable</span>;
+                }
+
+                return (
+                  <a
+                    href={row.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-zinc-300 underline-offset-4 hover:text-zinc-100 hover:underline"
+                  >
+                    Open File
+                  </a>
+                );
+              },
             },
             {
               key: 'actions',
               header: 'Actions',
-              render: (row) => (
-                <div className="flex items-center gap-1.5">
+              render: (row) => {
+                const canUseCloudinaryFile = row.isCloudinaryFile ?? isCloudinaryResumeUrl(row.fileUrl);
+
+                return (
+                  <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={row.isDefault || setDefaultMutation.isPending || !canUseCloudinaryFile}
+                    onClick={() => handleSetDefaultResume(row)}
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium ${
+                      row.isDefault
+                        ? 'cursor-not-allowed border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                        : !canUseCloudinaryFile
+                        ? 'cursor-not-allowed border-zinc-800 bg-zinc-900 text-zinc-500'
+                        : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
+                    }`}
+                    title={
+                      row.isDefault
+                        ? 'Already set as default'
+                        : !canUseCloudinaryFile
+                        ? 'Cloudinary URL required'
+                        : 'Set as default'
+                    }
+                  >
+                    <Star className="h-3.5 w-3.5" />
+                    {row.isDefault ? 'Default' : 'Set Default'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canUseCloudinaryFile}
+                    onClick={() => setPreviewingItem(row)}
+                    className={`rounded-md border bg-zinc-900 p-1.5 ${
+                      canUseCloudinaryFile
+                        ? 'border-zinc-800 text-zinc-300 hover:bg-zinc-800'
+                        : 'cursor-not-allowed border-zinc-800 text-zinc-500'
+                    }`}
+                    title={canUseCloudinaryFile ? 'Preview resume' : 'Cloudinary URL required for preview'}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => openEditModal(row)}
@@ -229,7 +343,8 @@ const AdminResumePage = () => {
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-              ),
+              );
+              },
             },
           ]}
           rows={items}
@@ -345,6 +460,12 @@ const AdminResumePage = () => {
         onConfirm={confirmDelete}
         onClose={() => setDeletingItem(null)}
         loading={deleteMutation.isPending}
+      />
+
+      <ResumePreviewModal
+        open={Boolean(previewingItem)}
+        resume={previewingItem}
+        onClose={() => setPreviewingItem(null)}
       />
     </div>
   );

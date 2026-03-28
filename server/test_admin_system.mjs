@@ -57,7 +57,7 @@ const assertStatus = (label, actual, expected) => {
 };
 
 const run = async () => {
-  const tempDir = path.join(process.cwd(), 'uploads');
+  const tempDir = path.join(process.cwd(), '.tmp-test-files');
   await fs.mkdir(tempDir, { recursive: true });
   const pdfPath = path.join(tempDir, `autotest-${Date.now()}.pdf`);
   const pngPath = path.join(tempDir, `autotest-${Date.now()}.png`);

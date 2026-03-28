@@ -16,6 +16,8 @@ import { useToast } from "../../context/ToastContext";
 import { chatbotQuerySchema } from "../../schemas/forms";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { getErrorMessage } from "../../lib/api";
+import { api } from "../../lib/api";
+import { buildTrackingMetadata } from "../../lib/analyticsTracking";
 
 const FALLBACK_MESSAGE = "I haven't added that yet, but working on it.";
 const FRIENDLY_ERROR_MESSAGE =
@@ -278,7 +280,9 @@ const ChatWindow = ({
 const GlobalChatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+    const [isMobile, setIsMobile] = useState(() =>
+        window.innerWidth < MOBILE_BREAKPOINT,
+    );
     const [tooltipIndex, setTooltipIndex] = useState(0);
     const [isTooltipPaused, setIsTooltipPaused] = useState(false);
     const [input, setInput] = useState("");
@@ -305,11 +309,12 @@ const GlobalChatbot = () => {
             setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
         };
 
-        updateViewport();
         window.addEventListener("resize", updateViewport);
+        window.addEventListener("orientationchange", updateViewport);
 
         return () => {
             window.removeEventListener("resize", updateViewport);
+            window.removeEventListener("orientationchange", updateViewport);
         };
     }, []);
 
@@ -339,6 +344,8 @@ const GlobalChatbot = () => {
         setIsExpanded(false);
     };
 
+    const shouldShowLauncher = !(isMobile && isOpen);
+
     const sendMessage = async (rawValue) => {
         const query = rawValue.trim();
         const validation = chatbotQuerySchema.safeParse({ query });
@@ -357,15 +364,13 @@ const GlobalChatbot = () => {
         const pendingId = messageIdRef.current;
 
         // Track chatbot interaction 
-        try {
-            api.post('/analytics/event', {
-                page: window.location.pathname,
-                type: 'chatbot',
-                delta: 1
-            });
-        } catch (err) {
+        api.post('/analytics/chatbot', {
+            page: window.location.pathname,
+            delta: 1,
+            metadata: buildTrackingMetadata(window.location.pathname),
+        }).catch(() => {
             // Silently fail telemetry
-        }
+        });
 
         setMessages((previous) => [
             ...previous,
@@ -458,23 +463,31 @@ const GlobalChatbot = () => {
 
     return (
         <>
-            <div
-                className="fixed bottom-3 right-3 z-[76] sm:bottom-4 sm:right-4"
-                onMouseEnter={() => setIsTooltipPaused(true)}
-                onMouseLeave={() => setIsTooltipPaused(false)}
-            >
-                <button
-                    type="button"
-                    onClick={() => setIsOpen((open) => !open)}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 shadow-lg shadow-zinc-700/25 transition-colors hover:bg-zinc-800"
-                    aria-label="Open AI chatbot"
-                >
-                    <MessageCircle className="h-4 w-4" />
-                </button>
-            </div>
+            <AnimatePresence>
+                {shouldShowLauncher ? (
+                    <Motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 6 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.92, y: 8 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="fixed bottom-3 right-3 z-[76] sm:bottom-4 sm:right-4"
+                        onMouseEnter={() => setIsTooltipPaused(true)}
+                        onMouseLeave={() => setIsTooltipPaused(false)}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setIsOpen((open) => !open)}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 shadow-lg shadow-zinc-700/25 transition-colors hover:bg-zinc-800"
+                            aria-label="Open AI chatbot"
+                        >
+                            <MessageCircle className="h-4 w-4" />
+                        </button>
+                    </Motion.div>
+                ) : null}
+            </AnimatePresence>
 
             <AnimatePresence>
-                {!isOpen && (
+                {!isOpen && shouldShowLauncher && (
                     <Motion.div
                         key={TOOLTIP_TEXTS[tooltipIndex]}
                         initial={{ opacity: 0, y: 6 }}

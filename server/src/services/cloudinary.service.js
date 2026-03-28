@@ -32,15 +32,24 @@ const configureCloudinaryIfNeeded = () => {
 };
 
 export const isCloudinaryUrl = (value) => {
+  return Boolean(getCloudinarySecureUrl(value));
+};
+
+export const getCloudinarySecureUrl = (value) => {
   if (!value || typeof value !== 'string') {
-    return false;
+    return '';
   }
 
   try {
     const parsedUrl = new URL(value);
-    return parsedUrl.protocol === 'https:' && parsedUrl.hostname.endsWith('cloudinary.com');
+    if (!parsedUrl.hostname.endsWith('cloudinary.com')) {
+      return '';
+    }
+
+    parsedUrl.protocol = 'https:';
+    return parsedUrl.toString();
   } catch {
-    return false;
+    return '';
   }
 };
 

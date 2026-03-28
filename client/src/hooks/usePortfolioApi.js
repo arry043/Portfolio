@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { buildTrackingMetadata } from '../lib/analyticsTracking';
 
 const queryKeys = {
   projects: (filters) => ['projects', filters],
@@ -44,7 +45,14 @@ const askChatbot = async (payload) => {
 };
 
 const trackEvent = async (payload) => {
-  const response = await api.post('/analytics/event', payload);
+  const route = payload?.metadata?.route || payload?.page;
+  const response = await api.post('/analytics/event', {
+    ...payload,
+    metadata: {
+      ...buildTrackingMetadata(route),
+      ...(payload?.metadata || {}),
+    },
+  });
   return response.data;
 };
 

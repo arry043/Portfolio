@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
+import { buildTrackingMetadata, shouldTrackOncePerSession } from '../lib/analyticsTracking';
 
 /**
  * Global site-wide tracking hook mapping route visits into the analytics database.
@@ -12,19 +13,24 @@ export const usePageTracking = () => {
   useEffect(() => {
     // We filter out admin routes to prevent messing with public telemetry
     if (location.pathname.startsWith('/admin')) return;
-    
+
+    const sessionKey = `visit:${location.pathname}`;
+    if (!shouldTrackOncePerSession(sessionKey)) {
+      return;
+    }
+
     const trackView = async () => {
       try {
-        await api.post('/analytics/event', {
+        await api.post('/analytics/visit', {
           page: location.pathname,
-          type: 'view',
-          delta: 1
+          delta: 1,
+          metadata: buildTrackingMetadata(location.pathname),
         });
-      } catch (err) {
+      } catch {
         // Silently fails tracking without disrupting app behavior
       }
     };
-    
+
     const timeoutId = setTimeout(trackView, 1000);
     return () => clearTimeout(timeoutId);
   }, [location.pathname]);

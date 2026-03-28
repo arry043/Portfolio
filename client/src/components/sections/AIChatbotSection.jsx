@@ -68,7 +68,10 @@ const AIChatbotSection = () => {
 
   const chatMutation = useChatMutation();
   const toast = useToast();
-  const { trackClick } = useTrackSectionView('ai-chatbot');
+  const { trackClick } = useTrackSectionView('ai-chatbot', {
+    clickType: 'chatbot',
+    clickEndpoint: '/analytics/chatbot',
+  });
   const chatContainerRef = useRef(null);
   const lastFailedQueryRef = useRef('');
   const messageIdRef = useRef(1);
