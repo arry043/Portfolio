@@ -2,6 +2,7 @@ import Project from '../models/Project.js';
 import Experience from '../models/Experience.js';
 import Certificate from '../models/Certificate.js';
 import { resumeData } from '../data/resume.data.js';
+import { ensureSeedData } from './seedData.service.js';
 
 const STOP_WORDS = new Set([
   'the', 'and', 'for', 'with', 'this', 'that', 'you', 'your', 'are', 'was', 'were',
@@ -10,14 +11,27 @@ const STOP_WORDS = new Set([
   'which', 'how', 'while', 'over', 'under', 'just', 'some', 'such', 'using', 'built', 'build'
 ]);
 
+const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+
 const tokenize = (value) =>
-  String(value)
-    .replace(/\s+/g, ' ')
-    .trim()
+  normalizeText(value)
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
     .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
+
+const formatDate = (value) => {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toISOString().slice(0, 10);
+};
 
 const getSkillsContext = (keywords) => {
   const { skills } = resumeData;
@@ -47,44 +61,90 @@ const getSkillsContext = (keywords) => {
 };
 
 export const getWebsiteContext = async (query) => {
+  await ensureSeedData();
+
   const keywords = tokenize(query);
-  const regexList = keywords.map(k => new RegExp(k, 'i'));
+  const regexList = keywords.map((keyword) => new RegExp(keyword, 'i'));
 
   let projQuery = {};
   let expQuery = {};
   let certQuery = {};
 
   if (regexList.length > 0) {
-    projQuery = { $or: [{ title: { $in: regexList } }, { description: { $in: regexList } }, { tags: { $in: regexList } }] };
-    expQuery = { $or: [{ company: { $in: regexList } }, { role: { $in: regexList } }, { description: { $in: regexList } }] };
+    projQuery = {
+      $or: [
+        { title: { $in: regexList } },
+        { description: { $in: regexList } },
+        { tags: { $in: regexList } },
+      ],
+    };
+    expQuery = {
+      $or: [
+        { company: { $in: regexList } },
+        { role: { $in: regexList } },
+        { description: { $in: regexList } },
+      ],
+    };
     certQuery = { $or: [{ title: { $in: regexList } }, { issuer: { $in: regexList } }] };
   }
 
   const fetchItems = async (Model, matchQuery, sortFields, limit) => {
-     let items = await Model.find(matchQuery).sort(sortFields).limit(limit).lean();
-     if (items.length === 0 && regexList.length > 0) {
-         // Fallback to recent if query didn't match anything specific (e.g. general query)
-         items = await Model.find({}).sort(sortFields).limit(limit).lean();
-     }
-     return items;
+    let items = await Model.find(matchQuery).sort(sortFields).limit(limit).lean();
+    if (items.length === 0 && regexList.length > 0) {
+      items = await Model.find({}).sort(sortFields).limit(limit).lean();
+    }
+    return items;
   };
 
   const [projects, experiences, certificates] = await Promise.all([
-    fetchItems(Project, projQuery, { createdAt: -1 }, 3),
-    fetchItems(Experience, expQuery, { startDate: -1 }, 3),
-    fetchItems(Certificate, certQuery, { issueDate: -1, createdAt: -1 }, 2),
+    fetchItems(Project, projQuery, { createdAt: -1 }, 6),
+    fetchItems(Experience, expQuery, { startDate: -1 }, 6),
+    fetchItems(Certificate, certQuery, { issueDate: -1, createdAt: -1 }, 4),
   ]);
 
   const skillsContext = getSkillsContext(keywords);
 
   let formattedContext = '';
 
+  if (resumeData.profile?.name || resumeData.profile?.summary || resumeData.profile?.location) {
+    const profileRows = [];
+    if (resumeData.profile?.name) {
+      profileRows.push(`- Name: ${normalizeText(resumeData.profile.name)}`);
+    }
+    if (resumeData.profile?.summary) {
+      profileRows.push(`- Summary: ${normalizeText(resumeData.profile.summary)}`);
+    }
+    if (resumeData.profile?.location) {
+      profileRows.push(`- Location: ${normalizeText(resumeData.profile.location)}`);
+    }
+    formattedContext += `Profile:\n${profileRows.join('\n')}\n\n`;
+  }
+
   if (projects.length > 0) {
-    formattedContext += `Projects:\n${projects.map(p => `- ${p.title}: ${p.description} (Tags: ${p.tags.join(', ')})`).join('\n')}\n\n`;
+    formattedContext += `Projects:\n${projects
+      .map((project) =>
+        `- ${normalizeText(project.title)}: ${normalizeText(project.description)} (Tags: ${(
+          project.tags || []
+        ).join(', ')})`
+      )
+      .join('\n')}\n\n`;
   }
 
   if (experiences.length > 0) {
-    formattedContext += `Experience:\n${experiences.map(e => `- ${e.role} at ${e.company} (${e.duration}): ${e.description}`).join('\n')}\n\n`;
+    formattedContext += `Experience:\n${experiences
+      .map((experience) => {
+        const startDate = formatDate(experience.startDate);
+        const endDate = formatDate(experience.endDate);
+        const dateRange = startDate || endDate ? `${startDate || '?'} to ${endDate || 'Present'}` : '';
+        const duration = normalizeText(experience.duration);
+
+        return `- ${normalizeText(experience.role)} at ${normalizeText(
+          experience.company
+        )}${dateRange ? ` (${dateRange})` : duration ? ` (${duration})` : ''}: ${normalizeText(
+          experience.description
+        )}`;
+      })
+      .join('\n')}\n\n`;
   }
 
   if (skillsContext) {
@@ -92,7 +152,19 @@ export const getWebsiteContext = async (query) => {
   }
 
   if (certificates.length > 0) {
-    formattedContext += `Certificates:\n${certificates.map(c => `- ${c.title} from ${c.issuer || c.organization}`).join('\n')}\n\n`;
+    formattedContext += `Certificates:\n${certificates
+      .map((certificate) => {
+        const issuer = normalizeText(certificate.issuer || certificate.organization);
+        const issueDate = formatDate(certificate.issueDate || certificate.issuedDate);
+        return `- ${normalizeText(certificate.title)} from ${issuer}${issueDate ? ` (${issueDate})` : ''}`;
+      })
+      .join('\n')}\n\n`;
+  }
+
+  if (Array.isArray(resumeData.achievements) && resumeData.achievements.length > 0) {
+    formattedContext += `Achievements:\n${resumeData.achievements
+      .map((item) => `- ${normalizeText(item)}`)
+      .join('\n')}\n\n`;
   }
 
   return formattedContext.trim();

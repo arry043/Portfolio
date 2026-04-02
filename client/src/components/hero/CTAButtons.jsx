@@ -1,41 +1,70 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { FileText, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { HERO_CTA_CONFIG } from './hero.constants';
 import useDefaultResumeStore from '../../store/useDefaultResumeStore';
+import { useToast } from '../../context/ToastContext';
+import { getErrorMessage } from '../../lib/api';
 import {
-  buildResumeDownloadUrl,
   getResumeDownloadFileName,
   triggerResumeDownload,
 } from '../../lib/resumeDownload';
 
 const CTAButtons = () => {
   const navigate = useNavigate();
+  const toast = useToast();
+  const [isDownloading, setIsDownloading] = useState(false);
   const defaultResume = useDefaultResumeStore((state) => state.defaultResume);
   const isLoadingResume = useDefaultResumeStore((state) => state.isLoading);
   const hasFetchedResume = useDefaultResumeStore((state) => state.hasFetched);
   const resumeError = useDefaultResumeStore((state) => state.error);
 
-  const resumeUrl = buildResumeDownloadUrl(defaultResume?.downloadUrl || defaultResume?.fileUrl || '');
-  const hasDownloadableResume = Boolean(resumeUrl);
+  const hasDownloadableResume = Boolean(defaultResume?._id || defaultResume?.fileUrl);
   const shouldHideDownloadButton =
     hasFetchedResume && !isLoadingResume && !hasDownloadableResume && !resumeError;
-  const downloadLabel = hasDownloadableResume
+  const downloadLabel = isDownloading
+    ? 'Preparing Download...'
+    : hasDownloadableResume
     ? HERO_CTA_CONFIG.secondary.label
     : isLoadingResume
     ? 'Loading Resume...'
     : 'Resume Unavailable';
 
-  const handleDownloadResume = () => {
-    if (!hasDownloadableResume) {
+  const handleDownloadResume = async () => {
+    if (!hasDownloadableResume || isDownloading) {
       return;
     }
 
-    triggerResumeDownload({
-      url: resumeUrl,
-      fileName: getResumeDownloadFileName(defaultResume),
-    });
+    setIsDownloading(true);
+    const loadingToastId = toast.loading('Preparing resume download...');
+
+    try {
+      const result = await triggerResumeDownload({
+        endpoint: defaultResume?.downloadApiUrl || '/download-resume',
+        fileName: getResumeDownloadFileName(defaultResume),
+      });
+
+      if (!result?.ok) {
+        throw result?.error || new Error('Resume download failed.');
+      }
+
+      toast.update(loadingToastId, {
+        type: 'success',
+        title: 'Download Started',
+        message: `${result.fileName || getResumeDownloadFileName(defaultResume)} is downloading.`,
+        persistent: false,
+      });
+    } catch (error) {
+      toast.update(loadingToastId, {
+        type: 'error',
+        title: 'Download Failed',
+        message: getErrorMessage(error),
+        persistent: false,
+      });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -55,7 +84,7 @@ const CTAButtons = () => {
             !hasDownloadableResume ? 'cursor-not-allowed opacity-65 hover:bg-zinc-800' : ''
           }`}
           onClick={handleDownloadResume}
-          disabled={!hasDownloadableResume}
+          disabled={!hasDownloadableResume || isDownloading}
           title={!hasDownloadableResume ? 'No default resume available right now' : undefined}
         >
           <FileText className="h-4 w-4" />

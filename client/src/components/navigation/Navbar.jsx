@@ -149,7 +149,7 @@ const Navbar = () => {
                     <Link
                         to="/"
                         onClick={closeMenu}
-                        className="text-sm font-semibold tracking-[0.12em] text-zinc-100"
+                        className="text-5xl font-semibold tracking-[0.12em] text-zinc-100"
                     >
                         Arif Ansari
                     </Link>

@@ -3,11 +3,14 @@ import multer from 'multer';
 const FIVE_MB = 5 * 1024 * 1024;
 
 const imageMimeTypes = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
-const resumeMimeTypes = new Set(['application/pdf']);
+const resumeMimeTypes = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
 
 const fileKindLabels = {
   image: 'JPG, PNG, or WEBP image',
-  resume: 'PDF',
+  resume: 'PDF or DOCX',
 };
 
 class UploadValidationError extends Error {

@@ -1,11 +1,56 @@
 import { PDFParse } from 'pdf-parse';
+import * as mammoth from 'mammoth';
+import { Groq } from 'groq-sdk';
+import Resume from '../models/Resume.js';
 import ResumeKnowledge from '../models/ResumeKnowledge.js';
 import { resumeData } from '../data/resume.data.js';
 
-const DEFAULT_FALLBACK_MESSAGE = "I haven't added that yet, but working on it.";
-const AMBIGUOUS_QUERY_MESSAGE =
-  'I can answer better if you ask specifically about my projects, skills, experience, or certifications.';
+export const STRICT_FALLBACK_MESSAGE =
+  "I'm having a small issue right now. Please try again in a moment.";
+
 const DEFAULT_SOURCE = 'seed-resume-data';
+const DEFAULT_GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const DEFAULT_GROQ_TEMPERATURE = 0;
+const DEFAULT_GROQ_TOP_P = 1;
+const DEFAULT_GROQ_MAX_COMPLETION_TOKENS = 700;
+const CONTEXT_CHAR_LIMIT = 28_000;
+const RETRIEVAL_CHUNK_LIMIT = 14;
+const RESUME_CACHE_TTL_MS = 10 * 60 * 1000;
+const FETCH_TIMEOUT_MS = 15_000;
+
+const STRICT_SYSTEM_PROMPT = `You are Mohd Arif Ansari, a Full Stack Developer, and you are speaking as the owner of this portfolio.
+
+Your role is to interact with visitors (mostly HRs, recruiters, or users) who want to quickly know about your skills, experience, and projects.
+
+STRICT RULES:
+- Answer ONLY based on the provided data.
+- Do NOT guess or hallucinate.
+- Do NOT generate any information that is not present in the provided data.
+- If the answer is not available in the data, respond exactly with:
+"I don't have that information yet. You can add it in the admin panel."
+- If only part of the answer is available, answer only the available part.
+
+PERSONA & TONE:
+- Always speak as "Arif Ansari" (first-person tone when appropriate).
+- Be polite, professional, and helpful.
+- Assume the user might be an HR, recruiter, or potential collaborator.
+- Keep answers clear, concise, and structured.
+- Highlight relevant skills, experience, or achievements when answering.
+
+LANGUAGE RULE:
+- Always reply in the SAME language as the user.
+- If the user writes in Hindi → reply in Hindi.
+- If the user writes in Hinglish → reply in Hinglish.
+- If the user writes in English → reply in English.
+- Detect the user's language automatically.
+- Do NOT translate unless explicitly asked.
+
+COMMUNICATION STYLE:
+- Be respectful and professional in every response.
+- Avoid overly casual or slang-heavy replies.
+- Focus on clarity and relevance.
+- Prefer short, impactful answers unless more detail is required.
+`;
 
 const STOP_WORDS = new Set([
   'the',
@@ -53,18 +98,20 @@ const STOP_WORDS = new Set([
   'build',
 ]);
 
+const resumeTextCache = new Map();
+let groqClient = null;
+
 const normalizeText = (value) =>
-  value
+  String(value || '')
     .replace(/\s+/g, ' ')
     .replace(/[\u0000-\u001f]/g, ' ')
     .trim();
 
 const tokenize = (value) =>
-  normalizeText(value)
+  (normalizeText(value)
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
+    .match(/[\p{L}\p{N}]+/gu) || []
+  ).filter((token) => token.length > 2 && !STOP_WORDS.has(token));
 
 const chunkText = (text, chunkSize = 900, overlap = 140) => {
   const normalized = normalizeText(text);
@@ -90,21 +137,325 @@ const chunkText = (text, chunkSize = 900, overlap = 140) => {
   return chunks;
 };
 
-const AMBIGUOUS_QUERIES = new Set([
-  'more',
-  'details',
-  'help',
-  'info',
-  'information',
-  'tell me more',
-  'explain',
-  'what about this',
-  'what about that',
-]);
+const toSeedKnowledgeText = () => {
+  const skills = Object.values(resumeData.skills || {})
+    .flat()
+    .join(', ');
 
-const isAmbiguousQuery = (query) => {
-  const normalized = normalizeText(query).toLowerCase();
-  return AMBIGUOUS_QUERIES.has(normalized);
+  const experiences = (resumeData.experience || [])
+    .map(
+      (item) =>
+        `${item.role} at ${item.company} (${item.period}): ${(item.highlights || []).join(
+          ' '
+        )}`
+    )
+    .join(' ');
+
+  const projects = (resumeData.projects || [])
+    .map(
+      (project) =>
+        `${project.title}: ${project.description}. Tags: ${(project.tags || []).join(', ')}.`
+    )
+    .join(' ');
+
+  const certifications = (resumeData.certifications || [])
+    .map((item) => `${item.title} from ${item.issuer}.`)
+    .join(' ');
+
+  const achievements = (resumeData.achievements || []).join(' ');
+
+  return [
+    resumeData.profile?.name ? `Name: ${resumeData.profile.name}` : '',
+    resumeData.profile?.title ? `Title: ${resumeData.profile.title}` : '',
+    resumeData.profile?.summary || '',
+    resumeData.profile?.location ? `Location: ${resumeData.profile.location}` : '',
+    `Skills: ${skills}`,
+    experiences,
+    projects,
+    certifications,
+    achievements,
+  ]
+    .join(' ')
+    .trim();
+};
+
+const toKnowledgeChunks = ({ sourceName, rawText, chunkPrefix = '' }) =>
+  chunkText(rawText).map((text, index) => ({
+    index,
+    text: normalizeText(`${chunkPrefix}${text}`),
+    tokens: tokenize(text),
+    sourceName,
+  }));
+
+const inferExtension = (fileName = '', fileUrl = '') => {
+  const source = `${fileName || ''} ${fileUrl || ''}`;
+  const matched = source.match(/\.([a-zA-Z0-9]{2,8})(?:$|\?|\s)/);
+  return matched?.[1]?.toLowerCase() || '';
+};
+
+const parsePdfBuffer = async (buffer) => {
+  const parser = new PDFParse({ data: buffer });
+
+  try {
+    const parsed = await parser.getText();
+    return normalizeText(parsed.text || '');
+  } finally {
+    await parser.destroy();
+  }
+};
+
+const parseDocxBuffer = async (buffer) => {
+  const parsed = await mammoth.extractRawText({ buffer });
+  return normalizeText(parsed?.value || '');
+};
+
+const parseTextBuffer = (buffer) => {
+  try {
+    return normalizeText(buffer.toString('utf-8'));
+  } catch {
+    return '';
+  }
+};
+
+const parseBufferByType = async ({ buffer, mimeType = '', fileName = '', fileUrl = '' }) => {
+  const normalizedMime = String(mimeType || '').toLowerCase().split(';')[0].trim();
+  const extension = inferExtension(fileName, fileUrl);
+
+  const isPdf = normalizedMime === 'application/pdf' || extension === 'pdf';
+  const isDocx =
+    normalizedMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    extension === 'docx';
+  const isTextLike =
+    normalizedMime.startsWith('text/') ||
+    ['txt', 'rtf', 'md', 'json'].includes(extension);
+
+  if (isPdf) {
+    return parsePdfBuffer(buffer);
+  }
+
+  if (isDocx) {
+    return parseDocxBuffer(buffer);
+  }
+
+  if (isTextLike) {
+    return parseTextBuffer(buffer);
+  }
+
+  return parseTextBuffer(buffer);
+};
+
+const fetchRemoteFile = async (fileUrl) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(fileUrl, { signal: controller.signal });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch resume from URL (${response.status})`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const parsedUrl = new URL(fileUrl);
+
+    return {
+      buffer: Buffer.from(arrayBuffer),
+      mimeType: response.headers.get('content-type') || '',
+      fileName: decodeURIComponent(parsedUrl.pathname.split('/').pop() || ''),
+      fileUrl,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const parseResumeText = async (input) => {
+  if (!input) {
+    throw new Error('Resume source is required');
+  }
+
+  if (typeof input === 'string') {
+    if (!input.startsWith('http')) {
+      throw new Error('Only URL string inputs are supported for resume parsing');
+    }
+
+    const remoteFile = await fetchRemoteFile(input);
+    return parseBufferByType(remoteFile);
+  }
+
+  if (input?.buffer) {
+    return parseBufferByType({
+      buffer: input.buffer,
+      mimeType: input.mimetype || input.mimeType || '',
+      fileName: input.originalname || input.fileName || '',
+      fileUrl: input.fileUrl || '',
+    });
+  }
+
+  if (input?.fileUrl) {
+    const remoteFile = await fetchRemoteFile(input.fileUrl);
+    return parseBufferByType({
+      ...remoteFile,
+      mimeType: input.mimeType || remoteFile.mimeType,
+      fileName: input.fileName || remoteFile.fileName,
+      fileUrl: input.fileUrl,
+    });
+  }
+
+  throw new Error('Resume file or URL is required');
+};
+
+const getCacheKey = (resume) => String(resume?._id || resume?.fileUrl || 'unknown');
+
+const getCacheFingerprint = (resume) =>
+  [resume?.fileUrl || '', String(resume?.updatedAt || ''), resume?.fileName || ''].join('|');
+
+const pruneCache = (activeKeys) => {
+  for (const key of resumeTextCache.keys()) {
+    if (!activeKeys.has(key)) {
+      resumeTextCache.delete(key);
+    }
+  }
+};
+
+const getAdminResumeParsedText = async (resume) => {
+  const cacheKey = getCacheKey(resume);
+  const fingerprint = getCacheFingerprint(resume);
+  const cached = resumeTextCache.get(cacheKey);
+  const now = Date.now();
+
+  if (
+    cached &&
+    cached.fingerprint === fingerprint &&
+    now - cached.cachedAt <= RESUME_CACHE_TTL_MS
+  ) {
+    return cached.text;
+  }
+
+  try {
+    const text = await parseResumeText({
+      fileUrl: resume.fileUrl,
+      fileName: resume.fileName,
+    });
+
+    if (text) {
+      resumeTextCache.set(cacheKey, {
+        fingerprint,
+        text,
+        cachedAt: now,
+      });
+    }
+
+    return text;
+  } catch {
+    return '';
+  }
+};
+
+const getAdminResumeChunks = async () => {
+  const resumes = await Resume.find({ fileUrl: { $exists: true, $ne: '' } })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!resumes.length) {
+    return [];
+  }
+
+  const activeKeys = new Set();
+  const parsedItems = await Promise.all(
+    resumes.map(async (resume) => {
+      const cacheKey = getCacheKey(resume);
+      activeKeys.add(cacheKey);
+
+      const parsedText = await getAdminResumeParsedText(resume);
+      if (!parsedText) {
+        return null;
+      }
+
+      return { resume, parsedText };
+    })
+  );
+
+  pruneCache(activeKeys);
+
+  const chunks = [];
+
+  for (const item of parsedItems) {
+    if (!item) {
+      continue;
+    }
+
+    const sourceName = `admin-resume:${item.resume._id}`;
+    const sourceLabel = `Resume: ${item.resume.title || 'Untitled'} | Category: ${item.resume.category || 'general'}\n`;
+    const sourceChunks = toKnowledgeChunks({
+      sourceName,
+      rawText: item.parsedText,
+      chunkPrefix: sourceLabel,
+    });
+
+    chunks.push(...sourceChunks);
+  }
+
+  return chunks;
+};
+
+const getStoredKnowledgeChunks = async () => {
+  const docs = await ResumeKnowledge.find().lean();
+
+  if (!docs.length) {
+    return [];
+  }
+
+  return docs.flatMap((doc) => {
+    if (Array.isArray(doc.chunks) && doc.chunks.length > 0) {
+      return doc.chunks.map((chunk, index) => ({
+        index: chunk.index ?? index,
+        text: normalizeText(chunk.text || ''),
+        tokens:
+          Array.isArray(chunk.tokens) && chunk.tokens.length > 0
+            ? chunk.tokens
+            : tokenize(chunk.text || ''),
+        sourceName: doc.sourceName || 'uploaded-knowledge',
+      }));
+    }
+
+    if (!doc.rawText) {
+      return [];
+    }
+
+    return toKnowledgeChunks({
+      sourceName: doc.sourceName || 'uploaded-knowledge',
+      rawText: doc.rawText,
+    });
+  });
+};
+
+const getSeedChunks = () => {
+  const seedText = toSeedKnowledgeText();
+
+  if (!seedText) {
+    return [];
+  }
+
+  return toKnowledgeChunks({
+    sourceName: DEFAULT_SOURCE,
+    rawText: seedText,
+  });
+};
+
+const getAllKnowledgeChunks = async () => {
+  const [adminResumeChunks, storedChunks] = await Promise.all([
+    getAdminResumeChunks(),
+    getStoredKnowledgeChunks(),
+  ]);
+
+  const combined = [...adminResumeChunks, ...storedChunks].filter((chunk) => chunk?.text);
+
+  if (combined.length > 0) {
+    return combined;
+  }
+
+  return getSeedChunks();
 };
 
 const scoreChunk = (queryTokens, chunkTokens, query, chunkTextValue) => {
@@ -123,254 +474,222 @@ const scoreChunk = (queryTokens, chunkTokens, query, chunkTextValue) => {
 
   let score = overlapCount / Math.sqrt(chunkTokenSet.size);
 
-  if (chunkTextValue.toLowerCase().includes(query.toLowerCase())) {
+  if (normalizeText(chunkTextValue).toLowerCase().includes(normalizeText(query).toLowerCase())) {
     score += 0.5;
   }
 
   return score;
 };
 
-const toSeedKnowledgeText = () => {
-  const skills = Object.values(resumeData.skills || {})
-    .flat()
-    .join(', ');
+const selectContextChunks = (query, allChunks) => {
+  if (!allChunks.length) {
+    return [];
+  }
 
-  const experiences = (resumeData.experience || [])
-    .map(
-      (item) =>
-        `${item.role} at ${item.company} (${item.period}): ${(item.highlights || []).join(
-          ' '
-        )}`
-    )
-    .join(' ');
+  const queryTokens = tokenize(query);
 
-  const projects = (resumeData.projects || [])
-    .map(
-      (project) =>
-        `${project.title}: ${project.description}. Tags: ${(project.tags || []).join(
-          ', '
-        )}.`
-    )
-    .join(' ');
+  if (queryTokens.length === 0) {
+    return allChunks.slice(0, RETRIEVAL_CHUNK_LIMIT);
+  }
 
-  const certifications = (resumeData.certifications || [])
-    .map((item) => `${item.title} from ${item.issuer}.`)
-    .join(' ');
+  const scoredChunks = allChunks
+    .map((chunk) => ({
+      ...chunk,
+      score: scoreChunk(queryTokens, chunk.tokens || [], query, chunk.text || ''),
+    }))
+    .filter((chunk) => chunk.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, RETRIEVAL_CHUNK_LIMIT);
 
-  const achievements = (resumeData.achievements || []).join(' ');
+  if (scoredChunks.length > 0) {
+    return scoredChunks;
+  }
 
-  return [
-    resumeData.profile?.summary || '',
-    `Skills: ${skills}`,
-    experiences,
-    projects,
-    certifications,
-    achievements,
-  ]
-    .join(' ')
-    .trim();
+  return allChunks.slice(0, RETRIEVAL_CHUNK_LIMIT);
 };
 
-const getKnowledgeDocument = async () => {
-  const existing = await ResumeKnowledge.findOne({ sourceName: 'resume' });
+const joinChunksWithinLimit = (chunks, maxChars = CONTEXT_CHAR_LIMIT) => {
+  const rows = [];
+  let total = 0;
 
-  if (existing && existing.chunks.length > 0) {
-    return existing;
-  }
-
-  const seedText = toSeedKnowledgeText();
-  const chunks = chunkText(seedText).map((text, index) => ({
-    index,
-    text,
-    tokens: tokenize(text),
-  }));
-
-  return {
-    sourceName: DEFAULT_SOURCE,
-    rawText: seedText,
-    chunks,
-    updatedAt: new Date(),
-  };
-};
-
-const parseResumeText = async (file) => {
-  if (!file && typeof file !== 'string') {
-    throw new Error('Resume file or URL is required');
-  }
-
-  if (typeof file === 'string' && file.startsWith('http')) {
-    const response = await fetch(file);
-    if (!response.ok) throw new Error('Failed to fetch resume from URL');
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const parser = new PDFParse({ data: buffer });
-    const parsed = await parser.getText();
-    await parser.destroy();
-    return normalizeText(parsed.text || '');
-  }
-
-  if (!file?.buffer) {
-    throw new Error('Resume file is required');
-  }
-
-  if (file.mimetype === 'application/pdf') {
-    const parser = new PDFParse({ data: file.buffer });
-    const parsed = await parser.getText();
-    await parser.destroy();
-    return normalizeText(parsed.text || '');
-  }
-
-  return normalizeText(file.buffer.toString('utf-8'));
-};
-
-const ensureFirstPersonVoice = (value) => {
-  const text = normalizeText(value);
-
-  if (!text) {
-    return DEFAULT_FALLBACK_MESSAGE;
-  }
-
-  if (/\b(i|my|me)\b/i.test(text)) {
-    return text;
-  }
-
-  if (text.endsWith('?')) {
-    return `I can clarify this better: ${text}`;
-  }
-
-  return `I can share this: ${text}`;
-};
-
-const trimAnswerLines = (value, maxLines = 4) => {
-  const normalized = String(value || '').replace(/\r/g, '').trim();
-
-  if (!normalized) {
-    return DEFAULT_FALLBACK_MESSAGE;
-  }
-
-  const rawLines = normalized.includes('\n')
-    ? normalized.split('\n').map((line) => line.trim()).filter(Boolean)
-    : (normalized.match(/[^.!?]+[.!?]?/g) || [normalized]).map((line) => line.trim());
-
-  const finalLines = rawLines.slice(0, maxLines).map((line) => {
-    if (line.length <= 160) {
-      return line;
+  for (const chunk of chunks) {
+    const row = normalizeText(chunk?.text || '');
+    if (!row) {
+      continue;
     }
 
-    return `${line.slice(0, 157)}...`;
+    const nextTotal = total + row.length + 2;
+    if (nextTotal > maxChars && rows.length > 0) {
+      break;
+    }
+
+    rows.push(row);
+    total = nextTotal;
+  }
+
+  return rows.join('\n\n').trim();
+};
+
+const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const normalizeFallbackIntent = (value) => {
+  const normalized = normalizeText(value).toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  if (normalized === STRICT_FALLBACK_MESSAGE.toLowerCase()) {
+    return true;
+  }
+
+  return (
+    normalized.includes("i don't have that information") ||
+    normalized.includes('i do not have that information') ||
+    normalized.includes('not available in the data')
+  );
+};
+
+const hasUnsupportedNumericClaim = (answer, context) => {
+  const answerNumbers = normalizeText(answer).match(/\b\d+(?:\.\d+)?\b/g) || [];
+
+  if (answerNumbers.length === 0) {
+    return false;
+  }
+
+  const normalizedContext = normalizeText(context).toLowerCase();
+
+  return answerNumbers.some((value) => {
+    const pattern = new RegExp(`\\b${escapeRegExp(value.toLowerCase())}\\b`, 'i');
+    return !pattern.test(normalizedContext);
   });
-
-  return finalLines.join('\n');
 };
 
-const generateFallbackAnswer = (query, chunks) => {
-  if (!chunks || chunks.length === 0) {
-    return DEFAULT_FALLBACK_MESSAGE;
+const enforceStrictAnswer = (answer, context) => {
+  const normalized = normalizeText(answer);
+
+  if (!normalized) {
+    return STRICT_FALLBACK_MESSAGE;
   }
 
-  const highlights = chunks
-    .slice(0, 3)
-    .map((chunk) => {
-      const sentence = (chunk.text || '').split(/[.!?]/).find(Boolean) || chunk.text;
-      return ensureFirstPersonVoice(sentence);
-    })
-    .filter(Boolean);
-
-  if (highlights.length === 0) {
-    return DEFAULT_FALLBACK_MESSAGE;
+  if (normalizeFallbackIntent(normalized)) {
+    return STRICT_FALLBACK_MESSAGE;
   }
 
-  return trimAnswerLines(highlights.join('\n'));
+  if (hasUnsupportedNumericClaim(normalized, context)) {
+    return STRICT_FALLBACK_MESSAGE;
+  }
+
+  return normalized;
 };
 
-const askOpenAI = async (query, context) => {
-  if (!process.env.OPENAI_API_KEY) {
-    return null;
+const toBoundedNumber = (value, fallback, { min, max }) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
   }
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      temperature: 0.2,
-      messages: [
-        {
-          role: 'system',
-          content:
-            "You are Mohd Arif Ansari replying to visitors on his portfolio. Answer only from the provided context. Always write in first person (I/my), friendly and confident, and keep responses within 2-4 short lines. If context is missing, reply exactly: I haven't added that yet, but working on it.",
-        },
-        {
-          role: 'user',
-          content: `Question: ${query}\n\nResume Context:\n${context}`,
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('OpenAI request failed');
-  }
-
-  const payload = await response.json();
-  return payload?.choices?.[0]?.message?.content?.trim() || null;
+  return Math.min(max, Math.max(min, parsed));
 };
 
-const askGroq = async (query, context) => {
+const getGroqClient = () => {
   if (!process.env.GROQ_API_KEY) {
     return null;
   }
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
-      temperature: 0.2,
-      messages: [
-        {
-          role: 'system',
-          content:
-            "You are Mohd Arif Ansari replying to visitors on his portfolio. Answer only from the provided context. Always write in first person (I/my), friendly and confident, and keep responses within 2-4 short lines. If context is missing, reply exactly: I haven't added that yet, but working on it.",
-        },
-        {
-          role: 'user',
-          content: `Question: ${query}\n\nResume Context:\n${context}`,
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Groq request failed');
+  if (!groqClient) {
+    groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
   }
 
-  const payload = await response.json();
-  return payload?.choices?.[0]?.message?.content?.trim() || null;
+  return groqClient;
+};
+
+const getGroqRequestConfig = () => ({
+  model: process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL,
+  temperature: toBoundedNumber(process.env.GROQ_TEMPERATURE, DEFAULT_GROQ_TEMPERATURE, {
+    min: 0,
+    max: 2,
+  }),
+  top_p: toBoundedNumber(process.env.GROQ_TOP_P, DEFAULT_GROQ_TOP_P, {
+    min: 0,
+    max: 1,
+  }),
+  max_completion_tokens: Math.round(
+    toBoundedNumber(process.env.GROQ_MAX_COMPLETION_TOKENS, DEFAULT_GROQ_MAX_COMPLETION_TOKENS, {
+      min: 64,
+      max: 4096,
+    })
+  ),
+});
+
+const buildGroqMessages = (query, context) => [
+  {
+    role: 'system',
+    content: STRICT_SYSTEM_PROMPT,
+  },
+  {
+    role: 'system',
+    content: `---- DATA START ----\n${context}\n---- DATA END ----`,
+  },
+  {
+    role: 'user',
+    content: query,
+  },
+];
+
+const readGroqStreamText = async (stream) => {
+  if (!stream || typeof stream[Symbol.asyncIterator] !== 'function') {
+    return null;
+  }
+
+  let combined = '';
+  for await (const chunk of stream) {
+    combined += chunk?.choices?.[0]?.delta?.content || '';
+  }
+
+  const normalized = combined.trim();
+  return normalized || null;
+};
+
+const askGroq = async (query, context) => {
+  const client = getGroqClient();
+  if (!client) {
+    return null;
+  }
+
+  const requestConfig = getGroqRequestConfig();
+  const messages = buildGroqMessages(query, context);
+
+  try {
+    const streamResult = await client.chat.completions.create({
+      ...requestConfig,
+      messages,
+      stream: true,
+    });
+
+    const streamedText = await readGroqStreamText(streamResult);
+    if (streamedText) {
+      return streamedText;
+    }
+  } catch {
+    // Gracefully fallback to non-stream completion.
+  }
+
+  const completion = await client.chat.completions.create({
+    ...requestConfig,
+    messages,
+    stream: false,
+  });
+
+  return completion?.choices?.[0]?.message?.content?.trim() || null;
 };
 
 export const askLLM = async (query, context) => {
   try {
-    const openAiResult = await askOpenAI(query, context);
-    if (openAiResult) {
-      return openAiResult;
-    }
-  } catch (error) {
-    // Gracefully continue to the next provider.
-  }
-
-  try {
     const groqResult = await askGroq(query, context);
     if (groqResult) {
-      return groqResult;
+      return enforceStrictAnswer(groqResult, context);
     }
-  } catch (error) {
+  } catch {
     // Gracefully continue to fallback response.
   }
 
@@ -412,60 +731,57 @@ export const indexResumeFromFile = async (file) => {
 };
 
 export const getResumeKnowledgeStatus = async () => {
-  const knowledge = await getKnowledgeDocument();
+  const [resumeCount, knowledgeDocs] = await Promise.all([
+    Resume.countDocuments({ fileUrl: { $exists: true, $ne: '' } }),
+    ResumeKnowledge.find().sort({ updatedAt: -1 }).lean(),
+  ]);
+
+  const chunkCount = knowledgeDocs.reduce(
+    (sum, doc) => sum + (Array.isArray(doc.chunks) ? doc.chunks.length : 0),
+    0
+  );
 
   return {
-    hasKnowledge: Array.isArray(knowledge.chunks) && knowledge.chunks.length > 0,
-    sourceName: knowledge.sourceName,
-    chunkCount: knowledge.chunks.length,
-    updatedAt: knowledge.updatedAt,
+    hasKnowledge: resumeCount > 0 || chunkCount > 0 || Boolean(toSeedKnowledgeText()),
+    sourceName: resumeCount > 0 ? 'admin-resumes' : chunkCount > 0 ? 'resume-knowledge' : DEFAULT_SOURCE,
+    chunkCount,
+    adminResumeCount: resumeCount,
+    cachedResumeCount: resumeTextCache.size,
+    updatedAt: knowledgeDocs[0]?.updatedAt || null,
   };
 };
 
 export const getResumeContext = async (query) => {
-  if (isAmbiguousQuery(query)) {
-    return { chunks: [], text: '' };
-  }
-
-  const knowledge = await getKnowledgeDocument();
-  const queryTokens = tokenize(query);
-
-  const scoredChunks = (knowledge.chunks || [])
-    .map((chunk) => ({
-      ...chunk,
-      score: scoreChunk(queryTokens, chunk.tokens || [], query, chunk.text || ''),
-    }))
-    .filter((chunk) => chunk.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 4);
+  const allChunks = await getAllKnowledgeChunks();
+  const selectedChunks = selectContextChunks(query, allChunks);
 
   return {
-    chunks: scoredChunks,
-    text: scoredChunks.map((chunk) => chunk.text).join('\n\n'),
+    chunks: selectedChunks,
+    text: joinChunksWithinLimit(selectedChunks),
   };
 };
 
-export const formatLLMAnswer = (modelAnswer, query, chunks) => {
+export const formatLLMAnswer = (modelAnswer, query, chunks, context = '') => {
   const safeAnswer = modelAnswer
-    ? trimAnswerLines(ensureFirstPersonVoice(modelAnswer))
-    : generateFallbackAnswer(query, chunks);
+    ? enforceStrictAnswer(modelAnswer, context)
+    : STRICT_FALLBACK_MESSAGE;
 
   return {
-    answer: safeAnswer || DEFAULT_FALLBACK_MESSAGE,
-    chunks: chunks.map((chunk) => ({ index: chunk.index, text: chunk.text })),
+    answer: safeAnswer || STRICT_FALLBACK_MESSAGE,
+    chunks: (chunks || []).map((chunk) => ({ index: chunk.index, text: chunk.text })),
   };
 };
 
 export const answerResumeQuestion = async (query) => {
   const { chunks, text } = await getResumeContext(query);
 
-  if (chunks.length === 0) {
+  if (chunks.length === 0 || !text) {
     return {
-      answer: DEFAULT_FALLBACK_MESSAGE,
+      answer: STRICT_FALLBACK_MESSAGE,
       chunks: [],
     };
   }
 
   const modelAnswer = await askLLM(query, text);
-  return formatLLMAnswer(modelAnswer, query, chunks);
+  return formatLLMAnswer(modelAnswer, query, chunks, text);
 };

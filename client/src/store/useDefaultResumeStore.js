@@ -12,6 +12,7 @@ const normalizeResume = (value) => {
     category: value.category || '',
     fileUrl: value.fileUrl || value.url || '',
     downloadUrl: value.downloadUrl || '',
+    downloadApiUrl: value.downloadApiUrl || '',
     fileName: value.fileName || '',
     isDefault: Boolean(value.isDefault),
     createdAt: value.createdAt || null,

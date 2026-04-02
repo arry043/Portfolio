@@ -71,6 +71,7 @@ import gameRoutes from './src/routes/game.routes.js';
 import adminResumeRoutes from './src/routes/admin.resume.routes.js';
 import adminUserRoutes from './src/routes/admin.user.routes.js';
 import adminExperienceRoutes from './src/routes/admin.experience.routes.js';
+import { downloadDefaultResume } from './src/controllers/resume.controller.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/projects', projectRoutes);
@@ -79,6 +80,7 @@ app.use('/api/v1/contact', contactRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/resume', resumeRoutes);
+app.get('/api/v1/download-resume', downloadDefaultResume);
 app.use('/api/v1/games', gameRoutes);
 app.use('/api/v1/admin/resumes', adminResumeRoutes);
 app.use('/api/v1/admin/users', adminUserRoutes);

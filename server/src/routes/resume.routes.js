@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  downloadDefaultResume,
   getDefaultResume,
   getResumeContent,
   setDefaultResume,
@@ -12,6 +13,8 @@ const router = express.Router();
 
 router.get('/', getResumeContent);
 router.get('/default', getDefaultResume);
+router.get('/download', downloadDefaultResume);
+router.get('/download-resume', downloadDefaultResume);
 router.patch('/set-default/:id', protect, admin, validateRequest(setDefaultAdminResumeSchema), setDefaultResume);
 
 export default router;

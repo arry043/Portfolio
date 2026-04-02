@@ -4,12 +4,13 @@ import {
   getResumeContext,
   getResumeKnowledgeStatus,
   indexResumeFromFile,
+  STRICT_FALLBACK_MESSAGE,
 } from '../services/resumeKnowledge.service.js';
 import { getWebsiteContext, mergeContext } from '../services/contextAggregator.service.js';
 
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
-const NO_DATA_MESSAGE = "I haven't added that yet, but working on it.";
+const NO_DATA_MESSAGE = STRICT_FALLBACK_MESSAGE;
 const FRIENDLY_ERROR_MESSAGE =
   "I'm having a small issue right now. Please try again in a moment.";
 const requestWindow = new Map();
@@ -81,7 +82,10 @@ export const askResume = async (req, res, next) => {
     ]);
 
     const { chunks } = resumeData;
-    const mergedContext = mergeContext(chunks.map(c => c.text), websiteContext);
+    const mergedContext = mergeContext(
+      chunks.map((chunk) => chunk.text),
+      websiteContext
+    );
 
     let response;
 
@@ -89,7 +93,7 @@ export const askResume = async (req, res, next) => {
       response = { answer: NO_DATA_MESSAGE, chunks: [] };
     } else {
       const modelAnswer = await askLLM(query, mergedContext);
-      response = formatLLMAnswer(modelAnswer, query, chunks);
+      response = formatLLMAnswer(modelAnswer, query, chunks, mergedContext);
     }
 
     return res.json({

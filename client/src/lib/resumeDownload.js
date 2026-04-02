@@ -1,3 +1,8 @@
+import { api } from './api';
+
+const DEFAULT_DOWNLOAD_ENDPOINT = '/download-resume';
+const DEFAULT_DOWNLOAD_FILE_NAME = 'Arif_Ansari_Resume.pdf';
+
 const toAbsoluteUrl = (value = '') => {
   const normalizedValue = String(value || '').trim();
   if (!normalizedValue) {
@@ -66,10 +71,42 @@ const sanitizeFileName = (value = '') =>
     .replace(/[^a-z0-9._-]+/gi, '_')
     .replace(/^_+|_+$/g, '');
 
+const hasFileExtension = (value = '') => /\.[a-z0-9]{2,8}$/i.test(String(value || ''));
+
+const extractFileNameFromDisposition = (headerValue = '') => {
+  const normalized = String(headerValue || '').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  const utf8Match = normalized.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return sanitizeFileName(decodeURIComponent(utf8Match[1]));
+    } catch {
+      return sanitizeFileName(utf8Match[1]);
+    }
+  }
+
+  const fallbackMatch = normalized.match(/filename\s*=\s*"?(?<name>[^";]+)"?/i);
+  return sanitizeFileName(fallbackMatch?.groups?.name || '');
+};
+
+const triggerBrowserDownload = ({ objectUrl, fileName }) => {
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = fileName || DEFAULT_DOWNLOAD_FILE_NAME;
+  anchor.rel = 'noopener';
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+};
+
 export const getResumeDownloadFileName = (resume) => {
   const fromFileName = sanitizeFileName(resume?.fileName || '');
   if (fromFileName) {
-    return fromFileName.toLowerCase().endsWith('.pdf') ? fromFileName : `${fromFileName}.pdf`;
+    return hasFileExtension(fromFileName) ? fromFileName : `${fromFileName}.pdf`;
   }
 
   const fromTitle = sanitizeFileName(resume?.title || '');
@@ -80,25 +117,44 @@ export const getResumeDownloadFileName = (resume) => {
   return 'resume.pdf';
 };
 
-export const triggerResumeDownload = ({ url, fileName }) => {
-  const downloadUrl = buildResumeDownloadUrl(url);
-
-  if (!downloadUrl) {
-    return false;
-  }
-
+export const triggerResumeDownload = async ({
+  endpoint = DEFAULT_DOWNLOAD_ENDPOINT,
+  fileName = DEFAULT_DOWNLOAD_FILE_NAME,
+} = {}) => {
   try {
-    const anchor = document.createElement('a');
-    anchor.href = downloadUrl;
-    anchor.download = fileName || 'resume.pdf';
-    anchor.rel = 'noopener';
-    anchor.style.display = 'none';
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    return true;
-  } catch {
-    window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-    return false;
+    const response = await api.get(endpoint, {
+      responseType: 'blob',
+      timeout: 45_000,
+    });
+    const responseBlob = response?.data;
+    const downloadBlob =
+      responseBlob instanceof Blob
+        ? responseBlob
+        : new Blob([responseBlob], {
+            type: response?.headers?.['content-type'] || 'application/octet-stream',
+          });
+
+    if (!downloadBlob || downloadBlob.size === 0) {
+      throw new Error('Resume download returned an empty file.');
+    }
+
+    const headerFileName = extractFileNameFromDisposition(
+      response?.headers?.['content-disposition']
+    );
+    const safeFallback = sanitizeFileName(fileName || '') || DEFAULT_DOWNLOAD_FILE_NAME;
+    const resolvedFileName = headerFileName || safeFallback;
+    const objectUrl = window.URL.createObjectURL(downloadBlob);
+
+    try {
+      triggerBrowserDownload({ objectUrl, fileName: resolvedFileName });
+    } finally {
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(objectUrl);
+      }, 0);
+    }
+
+    return { ok: true, fileName: resolvedFileName };
+  } catch (error) {
+    return { ok: false, error };
   }
 };

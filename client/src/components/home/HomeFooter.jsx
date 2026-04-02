@@ -169,7 +169,7 @@ const HomeFooter = () => {
                         </p>
 
                         <p className="text-sm text-zinc-600">
-                            Designed & Built with ❤️ using React & Tailwind
+                            Designed & Built with ❤️ using React, NodeJs, ExpressJs, MongoDB and Tailwind
                         </p>
                     </div>
                 </div>
