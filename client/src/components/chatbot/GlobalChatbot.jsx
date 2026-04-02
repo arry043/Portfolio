@@ -19,7 +19,7 @@ import { getErrorMessage } from "../../lib/api";
 import { api } from "../../lib/api";
 import { buildTrackingMetadata } from "../../lib/analyticsTracking";
 
-const FALLBACK_MESSAGE = "I haven't added that yet, but working on it.";
+const FALLBACK_MESSAGE = "I don't have that information yet. You can add it in the admin panel.";
 const FRIENDLY_ERROR_MESSAGE =
     "I'm having a small issue right now. Please try again in a moment.";
 const TOOLTIP_TEXTS = [
@@ -40,16 +40,8 @@ const formatAnswer = (value) => {
         return FALLBACK_MESSAGE;
     }
 
-    const rawLines = cleaned.includes("\n")
-        ? cleaned.split("\n")
-        : cleaned.match(/[^.!?]+[.!?]?/g) || [cleaned];
-
-    return rawLines
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .slice(0, 4)
-        .map((line) => (line.length > 160 ? `${line.slice(0, 157)}...` : line))
-        .join("\n");
+    // Relaxed formatting: Simply return the cleaned text to allow LLM structure (bullets, etc.)
+    return cleaned;
 };
 
 const ChatMessage = ({ message, onRetry }) => {

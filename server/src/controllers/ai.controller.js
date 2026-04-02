@@ -72,14 +72,28 @@ export const askResume = async (req, res, next) => {
       });
     }
 
-    rateState.count += 1;
+    const { query } = req.validated?.body || req.body || {};
 
-    const { query } = req.validated.body;
+    if (!query || String(query).trim().length < 2) {
+      return res.status(200).json({
+        success: true,
+        item: {
+          answer: "Could you please clarify your question? It's a bit too short for me to understand.",
+          chunks: [],
+        },
+        message: 'Query too short',
+      });
+    }
+
+    rateState.count += 1;
 
     const [resumeData, websiteContext] = await Promise.all([
       getResumeContext(query),
       getWebsiteContext(query),
-    ]);
+    ]).catch((err) => {
+      console.error('Context Retrieval Error:', err);
+      throw err;
+    });
 
     const { chunks } = resumeData;
     const mergedContext = mergeContext(
@@ -105,6 +119,7 @@ export const askResume = async (req, res, next) => {
           : 'Answer generated successfully',
     });
   } catch (error) {
+    console.error('Chatbot API Error:', error);
     return res.status(200).json({
       success: true,
       item: {
