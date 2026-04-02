@@ -7,26 +7,11 @@ import {
   STRICT_FALLBACK_MESSAGE,
 } from '../services/resumeKnowledge.service.js';
 import { getWebsiteContext, mergeContext } from '../services/contextAggregator.service.js';
+import logger from '../utils/logger.js';
 
-const RATE_WINDOW_MS = 60_000;
-const RATE_LIMIT = 20;
 const NO_DATA_MESSAGE = STRICT_FALLBACK_MESSAGE;
 const FRIENDLY_ERROR_MESSAGE =
   "I'm having a small issue right now. Please try again in a moment.";
-const requestWindow = new Map();
-
-const getRateLimitState = (key) => {
-  const now = Date.now();
-  const existing = requestWindow.get(key);
-
-  if (!existing || now - existing.windowStart > RATE_WINDOW_MS) {
-    const freshState = { count: 0, windowStart: now };
-    requestWindow.set(key, freshState);
-    return freshState;
-  }
-
-  return existing;
-};
 
 export const getResumeStatus = async (req, res, next) => {
   try {
@@ -57,21 +42,6 @@ export const uploadResume = async (req, res, next) => {
 
 export const askResume = async (req, res, next) => {
   try {
-    const requesterKey = req.ip || req.headers['x-forwarded-for'] || 'anonymous';
-    const rateState = getRateLimitState(requesterKey);
-
-    if (rateState.count >= RATE_LIMIT) {
-      const retryAfter = Math.ceil(
-        (RATE_WINDOW_MS - (Date.now() - rateState.windowStart)) / 1000
-      );
-
-      return res.status(429).json({
-        success: false,
-        message: 'Rate limit exceeded. Please retry shortly.',
-        retryAfter,
-      });
-    }
-
     const { query } = req.validated?.body || req.body || {};
 
     if (!query || String(query).trim().length < 2) {
@@ -85,13 +55,11 @@ export const askResume = async (req, res, next) => {
       });
     }
 
-    rateState.count += 1;
-
     const [resumeData, websiteContext] = await Promise.all([
       getResumeContext(query),
       getWebsiteContext(query),
     ]).catch((err) => {
-      console.error('Context Retrieval Error:', err);
+      logger.error('Context Retrieval Error:', err);
       throw err;
     });
 
@@ -119,7 +87,7 @@ export const askResume = async (req, res, next) => {
           : 'Answer generated successfully',
     });
   } catch (error) {
-    console.error('Chatbot API Error:', error);
+    logger.error('Chatbot API Error:', error);
     return res.status(200).json({
       success: true,
       item: {

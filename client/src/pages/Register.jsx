@@ -10,7 +10,7 @@ import InputField from '../components/auth/InputField';
 import Button from '../components/ui/Button';
 import SectionWrapper from '../components/layout/SectionWrapper';
 import Container from '../components/layout/Container';
-import axiosInstance from '../lib/axios';
+import { api, getErrorMessage } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 
 const registerSchema = z.object({
@@ -39,7 +39,7 @@ const Register = () => {
     setServerError('');
     const loadingToastId = toast.loading('Creating account...');
     try {
-      const response = await axiosInstance.post('/auth/register', data);
+      const response = await api.post('/auth/register', data);
       login(response.data.user, response.data.token);
       toast.update(loadingToastId, {
         type: 'success',

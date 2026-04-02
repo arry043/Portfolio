@@ -1,4 +1,4 @@
-import axiosInstance from './axios';
+import { api } from './api';
 
 export const normalizeEmail = (value = '') => String(value).trim().toLowerCase();
 
@@ -11,7 +11,7 @@ export const getClerkDisplayName = (clerkUser) =>
 export const getClerkImageUrl = (clerkUser) => String(clerkUser?.imageUrl || '').trim();
 
 export const syncClerkUserWithBackend = async ({ clerkToken, clerkUser }) => {
-  const response = await axiosInstance.post('/auth/sync-user', {
+  const response = await api.post('/auth/sync-user', {
     token: clerkToken,
     email: getClerkPrimaryEmail(clerkUser) || undefined,
     name: getClerkDisplayName(clerkUser) || undefined,

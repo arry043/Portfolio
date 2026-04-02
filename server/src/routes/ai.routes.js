@@ -12,10 +12,12 @@ import {
   resumeUpload,
 } from '../middlewares/upload.middleware.js';
 
+import { aiRateLimiter } from '../middlewares/rateLimiter.js';
+
 const router = express.Router();
 
 router.get('/status', getResumeStatus);
-router.post('/chat', validateRequest(resumeChatSchema), askResume);
+router.post('/chat', aiRateLimiter, validateRequest(resumeChatSchema), askResume);
 router.post(
   '/resume/upload',
   protect,

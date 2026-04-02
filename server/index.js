@@ -1,22 +1,20 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import env from './src/config/env.js';
 import connectDB from './src/config/db.js';
 import { notFound, errorHandler } from './src/middlewares/errorMiddleware.js';
-
-// Load env vars
-dotenv.config();
+import logger from './src/utils/logger.js';
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = env.PORT;
 
 // Connect to database
 if (process.env.NODE_ENV !== 'test') {
   connectDB();
 }
 
-console.log(`[INIT] Running in ${process.env.NODE_ENV || 'development'} mode.`);
-console.log(`[INIT] CLIENT_URL is set to: ${process.env.CLIENT_URL}`);
+logger.info(`[BOOT] Running in ${env.NODE_ENV} mode.`);
+logger.info(`[BOOT] CLIENT_URL is set to: ${env.CLIENT_URL}`);
 
 // Middleware
 const allowedOrigins = [
@@ -30,7 +28,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log(`[CORS DEBUG] Rejected origin: ${origin}`);
+      logger.warn(`[CORS DEBUG] Rejected origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -91,5 +89,5 @@ app.use(notFound);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  logger.info(`[BOOT] Server running on port ${PORT}`);
 });
