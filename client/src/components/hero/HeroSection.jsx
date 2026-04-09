@@ -4,6 +4,12 @@ import Container from "../layout/Container";
 import SectionWrapper from "../layout/SectionWrapper";
 import HeroContent from "./HeroContent";
 import { DEFAULT_MODE, HERO_CONTENT, getValidatedMode } from "./hero.constants";
+import HomeAchievements from "../home/HomeAchievements";
+import {
+    useCertificatesQuery,
+    useProjectsQuery,
+    useResumeQuery,
+} from "../../hooks/usePortfolioApi";
 
 const MODE_SWITCH_DEBOUNCE_MS = 130;
 
@@ -42,10 +48,18 @@ const HeroSection = ({ profile }) => {
         };
     }, []);
 
+    const resumeQuery = useResumeQuery();
+    const projectsQuery = useProjectsQuery();
+    const certificatesQuery = useCertificatesQuery();
+
+    const resume = resumeQuery.data?.item || {};
+    const projects = projectsQuery.data?.items || [];
+    const certificates = certificatesQuery.data?.items || [];
+
     return (
         <SectionWrapper
             id="home"
-            className="min-h-[90vh] flex flex-col justify-center pt-28 sm:pt-28 lg:pt-16 bg-gradient-to-b from-[#020617] to-black py-16 sm:py-20 lg:py-24"
+            className="flex flex-col justify-center bg-gradient-to-b from-[#020617] to-black pt-32 sm:pt-36 lg:pt-48 sm:pb-2"
         >
             <Container>
                 <div className="mx-auto max-w-6xl px-4 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
@@ -84,6 +98,12 @@ const HeroSection = ({ profile }) => {
                         />
                     </div>
                 </div>
+                <HomeAchievements
+                    achievements={resume.achievements || []}
+                    projectCount={projects.length}
+                    certificateCount={certificates.length}
+                    experienceCount={(resume.experience || []).length}
+                />
             </Container>
         </SectionWrapper>
     );

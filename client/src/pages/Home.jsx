@@ -9,6 +9,13 @@ import { useCertificatesQuery, useProjectsQuery, useResumeQuery } from '../hooks
 import { useToast } from '../context/ToastContext';
 import { getErrorMessage } from '../lib/api';
 
+const HeroSectionWrapper = memo(HeroSection);
+const HomeWhatIAmWrapper = memo(HomeWhatIAm);
+const HomeAchievementsWrapper = memo(HomeAchievements);
+const HomeHighlightsWrapper = memo(HomeHighlights);
+const CodingProfilesHighlightsWrapper = memo(CodingProfilesHighlights);
+const HomeContactCtaWrapper = memo(HomeContactCta);
+
 const Home = () => {
   const resumeQuery = useResumeQuery();
   const projectsQuery = useProjectsQuery();
@@ -41,12 +48,12 @@ const Home = () => {
     <>
       <HeroSection profile={resume.profile} />
       <HomeWhatIAm profile={resume.profile} skills={resume.skills} />
-      <HomeAchievements
+      {/* <HomeAchievements
         achievements={resume.achievements || []}
         projectCount={projects.length}
         certificateCount={certificates.length}
         experienceCount={(resume.experience || []).length}
-      />
+      /> */}
       <HomeHighlights projects={projects} skills={resume.skills} />
       <CodingProfilesHighlights />
       <HomeContactCta />
