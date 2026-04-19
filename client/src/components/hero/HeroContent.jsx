@@ -77,10 +77,12 @@ const HeroContent = ({ name, mode, onModeChange }) => {
                 variants={itemAnimation}
                 className="text-sm sm:text-base text-zinc-400 max-w-lg leading-relaxed mt-3"
             >
-                Full Stack Developer (MERN + Django) with strong backend
-                expertise, AI integration, and performance-focused architecture.
-                Passionate about building scalable products and real-world
-                solutions.
+                Full Stack Developer with hands-on internship experience at
+                FlashSpace. Strong in Data Structures Algorithms (200+ LeetCode,
+                250+ GFG – Rank 20). Skilled in building scalable web
+                applications using REST APIs, JWT, WebSockets, and optimized
+                databases. Strong foundation in OOP and adaptable to new
+                technologies.
             </Motion.p>
 
             <Motion.div
@@ -90,7 +92,8 @@ const HeroContent = ({ name, mode, onModeChange }) => {
                 {/* 🔗 Social Icons (TOP) */}
                 <div className="flex items-center gap-4">
                     {HERO_SOCIAL_LINKS.slice(0, 4).map((link) => {
-                        const IconComponent = socialIcons[link.icon] || SiLeetcode;
+                        const IconComponent =
+                            socialIcons[link.icon] || SiLeetcode;
                         return (
                             <a
                                 key={link.name}

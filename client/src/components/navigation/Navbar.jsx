@@ -180,7 +180,7 @@ const Navbar = () => {
                     <div className="flex items-center gap-2">
                         <Link
                             to="/"
-                            className="whitespace-nowrap text-sm font-semibold tracking-[0.13em] text-zinc-100"
+                            className="whitespace-nowrap uppercase text-sm font-semibold tracking-[0.13em] text-zinc-100"
                         >
                             Arif Ansari
                         </Link>
