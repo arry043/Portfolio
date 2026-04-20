@@ -24,6 +24,9 @@ import useAuthStore from './store/useAuthStore';
 import useDefaultResumeStore from './store/useDefaultResumeStore';
 import { useEffect } from 'react';
 import useBackendAuthSync from './hooks/useBackendAuthSync';
+import { useResumeQuery } from './hooks/usePortfolioApi';
+import { useGlobalLoading } from './context/LoadingContext';
+import GlobalLoader from './components/ui/GlobalLoader';
 import './index.css';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -90,8 +93,21 @@ const AppShell = () => {
   // Activate tracking globally
   usePageTracking();
 
+  // Sync Global Loading State with initial data fetch
+  const { setHasInitialDataLoaded } = useGlobalLoading();
+  const { isSuccess, isError, isLoading: isQueryLoading } = useResumeQuery();
+
+  useEffect(() => {
+    // Once the critical API (resume) is no longer loading (success or error)
+    // we consider the initial backend wake-up check complete.
+    if (!isQueryLoading && (isSuccess || isError)) {
+      setHasInitialDataLoaded(true);
+    }
+  }, [isSuccess, isError, isQueryLoading, setHasInitialDataLoaded]);
+
   return (
     <div className="flex min-h-screen flex-col bg-dark-primary font-sans text-text-primary selection:bg-zinc-700/50">
+      <GlobalLoader />
       {!isAdminRoute ? <Navbar /> : null}
       {!isAdminRoute ? <GlobalChatbot /> : null}
       <AuthSync />
