@@ -13,6 +13,7 @@ import HomeFooter from './components/home/HomeFooter';
 import Container from './components/layout/Container';
 import SectionWrapper from './components/layout/SectionWrapper';
 import Button from './components/ui/Button';
+import SectionSkeleton from './components/common/SectionSkeleton';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PublicAuthRoute from './components/auth/PublicAuthRoute';
 import GlobalChatbot from './components/chatbot/GlobalChatbot';
@@ -24,9 +25,6 @@ import useAuthStore from './store/useAuthStore';
 import useDefaultResumeStore from './store/useDefaultResumeStore';
 import { useEffect } from 'react';
 import useBackendAuthSync from './hooks/useBackendAuthSync';
-import { useResumeQuery } from './hooks/usePortfolioApi';
-import { useGlobalLoading } from './context/LoadingContext';
-import GlobalLoader from './components/ui/GlobalLoader';
 import './index.css';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -47,11 +45,7 @@ const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
 const PageLoading = () => (
   <SectionWrapper className="min-h-[calc(100vh-4rem)] pt-24">
     <Container>
-      <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-        <div className="h-4 w-44 animate-pulse rounded bg-zinc-800" />
-        <div className="h-3 w-full animate-pulse rounded bg-zinc-900" />
-        <div className="h-3 w-11/12 animate-pulse rounded bg-zinc-900" />
-      </div>
+      <SectionSkeleton cardCount={3} />
     </Container>
   </SectionWrapper>
 );
@@ -81,6 +75,23 @@ const DefaultResumeSync = () => {
 
   useEffect(() => {
     fetchDefaultResume();
+
+    const refreshDefaultResume = () => {
+      fetchDefaultResume({ force: true });
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshDefaultResume();
+      }
+    };
+
+    window.addEventListener('focus', refreshDefaultResume);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener('focus', refreshDefaultResume);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [fetchDefaultResume]);
 
   return null;
@@ -93,21 +104,8 @@ const AppShell = () => {
   // Activate tracking globally
   usePageTracking();
 
-  // Sync Global Loading State with initial data fetch
-  const { setHasInitialDataLoaded } = useGlobalLoading();
-  const { isSuccess, isError, isLoading: isQueryLoading } = useResumeQuery();
-
-  useEffect(() => {
-    // Once the critical API (resume) is no longer loading (success or error)
-    // we consider the initial backend wake-up check complete.
-    if (!isQueryLoading && (isSuccess || isError)) {
-      setHasInitialDataLoaded(true);
-    }
-  }, [isSuccess, isError, isQueryLoading, setHasInitialDataLoaded]);
-
   return (
     <div className="flex min-h-screen flex-col bg-dark-primary font-sans text-text-primary selection:bg-zinc-700/50">
-      <GlobalLoader />
       {!isAdminRoute ? <Navbar /> : null}
       {!isAdminRoute ? <GlobalChatbot /> : null}
       <AuthSync />

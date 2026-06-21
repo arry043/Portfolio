@@ -1,37 +1,40 @@
-import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { api } from '../lib/api';
-import { buildTrackingMetadata, shouldTrackOncePerSession } from '../lib/analyticsTracking';
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { api } from "../lib/api";
+import {
+    buildTrackingMetadata,
+    shouldTrackOncePerSession,
+} from "../lib/tracking";
 
 /**
  * Global site-wide tracking hook mapping route visits into the analytics database.
  * Auto-debounced to prevent strict-mode dev double fires.
  */
 export const usePageTracking = () => {
-  const location = useLocation();
+    const location = useLocation();
 
-  useEffect(() => {
-    // We filter out admin routes to prevent messing with public telemetry
-    if (location.pathname.startsWith('/admin')) return;
+    useEffect(() => {
+        // We filter out admin routes to prevent messing with public telemetry
+        if (location.pathname.startsWith("/admin")) return;
 
-    const sessionKey = `visit:${location.pathname}`;
-    if (!shouldTrackOncePerSession(sessionKey)) {
-      return;
-    }
+        const sessionKey = `visit:${location.pathname}`;
+        if (!shouldTrackOncePerSession(sessionKey)) {
+            return;
+        }
 
-    const trackView = async () => {
-      try {
-        await api.post('/analytics/visit', {
-          page: location.pathname,
-          delta: 1,
-          metadata: buildTrackingMetadata(location.pathname),
-        });
-      } catch {
-        // Silently fails tracking without disrupting app behavior
-      }
-    };
+        const trackView = async () => {
+            try {
+                await api.post("/analytics/visit", {
+                    page: location.pathname,
+                    delta: 1,
+                    metadata: buildTrackingMetadata(location.pathname),
+                });
+            } catch {
+                // Silently fails tracking without disrupting app behavior
+            }
+        };
 
-    const timeoutId = setTimeout(trackView, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [location.pathname]);
+        const timeoutId = setTimeout(trackView, 1000);
+        return () => clearTimeout(timeoutId);
+    }, [location.pathname]);
 };

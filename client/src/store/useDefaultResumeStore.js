@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api, getErrorMessage } from '../lib/api';
+import { clearCachedDefaultResume, warmDefaultResumeCache } from '../lib/defaultResumeCache';
 
 const normalizeResume = (value) => {
   if (!value || typeof value !== 'object') {
@@ -29,12 +30,14 @@ const useDefaultResumeStore = create((set, get) => ({
   hasFetched: false,
 
   setDefaultResume: (resumeData) => {
+    const normalized = normalizeResume(resumeData);
     set({
-      defaultResume: normalizeResume(resumeData),
+      defaultResume: normalized,
       isLoading: false,
       error: null,
       hasFetched: true,
     });
+    warmDefaultResumeCache(normalized);
   },
 
   clearDefaultResume: () => {
@@ -44,6 +47,7 @@ const useDefaultResumeStore = create((set, get) => ({
       error: null,
       hasFetched: true,
     });
+    clearCachedDefaultResume().catch(() => {});
   },
 
   fetchDefaultResume: async ({ force = false } = {}) => {
@@ -68,6 +72,7 @@ const useDefaultResumeStore = create((set, get) => ({
           error: null,
           hasFetched: true,
         });
+        warmDefaultResumeCache(normalized);
         return normalized;
       } catch (error) {
         if (error?.response?.status === 404) {
@@ -77,6 +82,7 @@ const useDefaultResumeStore = create((set, get) => ({
             error: null,
             hasFetched: true,
           });
+          clearCachedDefaultResume().catch(() => {});
           return null;
         }
 

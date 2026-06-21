@@ -1,4 +1,5 @@
 import { api } from './api';
+import { cacheDefaultResume, getCachedDefaultResume } from './defaultResumeCache';
 
 const DEFAULT_DOWNLOAD_ENDPOINT = '/download-resume';
 const DEFAULT_DOWNLOAD_FILE_NAME = 'Arif_Ansari_Resume.pdf';
@@ -120,8 +121,38 @@ export const getResumeDownloadFileName = (resume) => {
 export const triggerResumeDownload = async ({
   endpoint = DEFAULT_DOWNLOAD_ENDPOINT,
   fileName = DEFAULT_DOWNLOAD_FILE_NAME,
+  resume = null,
 } = {}) => {
   try {
+    let cachedResponse = resume ? await getCachedDefaultResume(resume) : null;
+
+    if (!cachedResponse && resume) {
+      try {
+        cachedResponse = await cacheDefaultResume(resume);
+      } catch {
+        // Cloudinary/browser caching is an optimization; the server remains the fallback.
+      }
+    }
+
+    if (cachedResponse) {
+      const cachedBlob = await cachedResponse.blob();
+      if (cachedBlob.size > 0) {
+        const cachedFileName =
+          cachedResponse.headers.get('X-Resume-File-Name') ||
+          sanitizeFileName(fileName || '') ||
+          DEFAULT_DOWNLOAD_FILE_NAME;
+        const objectUrl = window.URL.createObjectURL(cachedBlob);
+
+        try {
+          triggerBrowserDownload({ objectUrl, fileName: cachedFileName });
+        } finally {
+          window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 0);
+        }
+
+        return { ok: true, fileName: cachedFileName, source: 'browser-cache' };
+      }
+    }
+
     const response = await api.get(endpoint, {
       responseType: 'blob',
       timeout: 45_000,
@@ -153,7 +184,7 @@ export const triggerResumeDownload = async ({
       }, 0);
     }
 
-    return { ok: true, fileName: resolvedFileName };
+    return { ok: true, fileName: resolvedFileName, source: 'server' };
   } catch (error) {
     return { ok: false, error };
   }

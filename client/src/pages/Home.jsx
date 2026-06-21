@@ -1,20 +1,12 @@
 import { memo, useEffect } from 'react';
 import HeroSection from '../components/hero/HeroSection';
 import HomeWhatIAm from '../components/home/HomeWhatIAm';
-import HomeAchievements from '../components/home/HomeAchievements';
 import HomeHighlights from '../components/home/HomeHighlights';
 import CodingProfilesHighlights from '../components/sections/CodingProfilesHighlights';
 import HomeContactCta from '../components/home/HomeContactCta';
 import { useCertificatesQuery, useProjectsQuery, useResumeQuery } from '../hooks/usePortfolioApi';
 import { useToast } from '../context/ToastContext';
 import { getErrorMessage } from '../lib/api';
-
-const HeroSectionWrapper = memo(HeroSection);
-const HomeWhatIAmWrapper = memo(HomeWhatIAm);
-const HomeAchievementsWrapper = memo(HomeAchievements);
-const HomeHighlightsWrapper = memo(HomeHighlights);
-const CodingProfilesHighlightsWrapper = memo(CodingProfilesHighlights);
-const HomeContactCtaWrapper = memo(HomeContactCta);
 
 const Home = () => {
   const resumeQuery = useResumeQuery();
@@ -46,15 +38,20 @@ const Home = () => {
 
   return (
     <>
-      <HeroSection profile={resume.profile} />
-      <HomeWhatIAm profile={resume.profile} skills={resume.skills} />
-      {/* <HomeAchievements
+      <HeroSection
+        profile={resume.profile}
         achievements={resume.achievements || []}
         projectCount={projects.length}
         certificateCount={certificates.length}
         experienceCount={(resume.experience || []).length}
-      /> */}
-      <HomeHighlights projects={projects} skills={resume.skills} />
+        isLoading={resumeQuery.isLoading || projectsQuery.isLoading || certificatesQuery.isLoading}
+      />
+      <HomeWhatIAm profile={resume.profile} skills={resume.skills} isLoading={resumeQuery.isLoading} />
+      <HomeHighlights
+        projects={projects}
+        skills={resume.skills}
+        isLoading={resumeQuery.isLoading || projectsQuery.isLoading}
+      />
       <CodingProfilesHighlights />
       <HomeContactCta />
     </>

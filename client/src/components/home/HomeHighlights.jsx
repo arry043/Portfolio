@@ -6,8 +6,10 @@ import Container from '../layout/Container';
 import Card from '../ui/Card';
 import SectionHeader from '../common/SectionHeader';
 import EmptyState from '../common/EmptyState';
+import SectionSkeleton from '../common/SectionSkeleton';
+import { motion as Motion } from 'framer-motion';
 
-const HomeHighlights = ({ projects = [], skills = {} }) => {
+const HomeHighlights = ({ projects = [], skills = {}, isLoading = false }) => {
   const topProjects = projects.slice(0, 3);
   const topSkills = Object.values(skills)
     .flat()
@@ -24,7 +26,10 @@ const HomeHighlights = ({ projects = [], skills = {} }) => {
             description="Quick glance at stack depth and recent project work."
           />
 
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {isLoading ? (
+            <SectionSkeleton cardCount={2} variant="split" />
+          ) : (
+          <Motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <Card className="border-zinc-800 bg-zinc-950/70 p-3 sm:p-4" hoverEffect={false}>
               <p className="text-sm font-semibold text-zinc-100">Top Skills</p>
               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -83,7 +88,8 @@ const HomeHighlights = ({ projects = [], skills = {} }) => {
                 )}
               </div>
             </Card>
-          </div>
+          </Motion.div>
+          )}
         </div>
       </Container>
     </SectionWrapper>

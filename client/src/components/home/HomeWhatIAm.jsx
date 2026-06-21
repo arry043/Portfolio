@@ -4,6 +4,8 @@ import SectionWrapper from '../layout/SectionWrapper';
 import Container from '../layout/Container';
 import Card from '../ui/Card';
 import SectionHeader from '../common/SectionHeader';
+import SectionSkeleton from '../common/SectionSkeleton';
+import { motion as Motion } from 'framer-motion';
 
 const ICON_BY_GROUP = {
   frontend: Code2,
@@ -11,7 +13,7 @@ const ICON_BY_GROUP = {
   ai: BrainCircuit,
 };
 
-const HomeWhatIAm = ({ profile, skills = {} }) => {
+const HomeWhatIAm = ({ profile, skills = {}, isLoading = false }) => {
   const skillGroups = Object.entries(skills).slice(0, 3);
 
   return (
@@ -24,6 +26,10 @@ const HomeWhatIAm = ({ profile, skills = {} }) => {
             description="Role direction and capability snapshot powered by dynamic resume data."
           />
 
+          {isLoading ? (
+            <SectionSkeleton cardCount={3} />
+          ) : (
+          <Motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <Card className="border-zinc-800 bg-zinc-950/70 p-3 sm:p-4" hoverEffect={false}>
             <div className="space-y-4">
               <div>
@@ -59,6 +65,8 @@ const HomeWhatIAm = ({ profile, skills = {} }) => {
               </div>
             </div>
           </Card>
+          </Motion.div>
+          )}
         </div>
       </Container>
     </SectionWrapper>

@@ -4,12 +4,15 @@ import SectionWrapper from '../layout/SectionWrapper';
 import Container from '../layout/Container';
 import Card from '../ui/Card';
 import SectionHeader from '../common/SectionHeader';
+import SectionSkeleton from '../common/SectionSkeleton';
+import { motion as Motion } from 'framer-motion';
 
 const HomeAchievements = ({
   achievements = [],
   projectCount = 0,
   certificateCount = 0,
   experienceCount = 0,
+  isLoading = false,
 }) => {
   const metrics = [
     { label: 'Projects', value: projectCount },
@@ -27,7 +30,10 @@ const HomeAchievements = ({
             description="Dynamic summary generated from backend-backed portfolio content."
           />
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {isLoading ? (
+            <SectionSkeleton variant="metrics" cardCount={3} />
+          ) : (
+          <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {metrics.map((metric) => (
               <Card
                 key={metric.label}
@@ -38,8 +44,11 @@ const HomeAchievements = ({
                 <p className="mt-1 text-xl font-semibold text-zinc-100">{metric.value}</p>
               </Card>
             ))}
-          </div>
+          </Motion.div>
+          )}
 
+          {!isLoading ? (
+          <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.08 }}>
           <Card className="border-zinc-800 bg-zinc-950/75 p-3 sm:p-4" hoverEffect={false}>
             <div className="space-y-2">
               <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
@@ -64,6 +73,8 @@ const HomeAchievements = ({
               )}
             </div>
           </Card>
+          </Motion.div>
+          ) : null}
         </div>
       </Container>
     </SectionWrapper>

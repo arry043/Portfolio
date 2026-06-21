@@ -17,9 +17,10 @@ import { chatbotQuerySchema } from "../../schemas/forms";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { getErrorMessage } from "../../lib/api";
 import { api } from "../../lib/api";
-import { buildTrackingMetadata } from "../../lib/analyticsTracking";
+import { buildTrackingMetadata } from "../../lib/tracking";
 
-const FALLBACK_MESSAGE = "I don't have that information yet. You can add it in the admin panel.";
+const FALLBACK_MESSAGE =
+    "I don't have that information yet. You can add it in the admin panel.";
 const FRIENDLY_ERROR_MESSAGE =
     "I'm having a small issue right now. Please try again in a moment.";
 const TOOLTIP_TEXTS = [
@@ -272,8 +273,8 @@ const ChatWindow = ({
 const GlobalChatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isMobile, setIsMobile] = useState(() =>
-        window.innerWidth < MOBILE_BREAKPOINT,
+    const [isMobile, setIsMobile] = useState(
+        () => window.innerWidth < MOBILE_BREAKPOINT,
     );
     const [tooltipIndex, setTooltipIndex] = useState(0);
     const [isTooltipPaused, setIsTooltipPaused] = useState(false);
@@ -355,8 +356,8 @@ const GlobalChatbot = () => {
         messageIdRef.current += 1;
         const pendingId = messageIdRef.current;
 
-        // Track chatbot interaction 
-        api.post('/analytics/chatbot', {
+        // Track chatbot interaction
+        api.post("/analytics/chatbot", {
             page: window.location.pathname,
             delta: 1,
             metadata: buildTrackingMetadata(window.location.pathname),

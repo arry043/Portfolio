@@ -5,15 +5,17 @@ import SectionWrapper from "../layout/SectionWrapper";
 import HeroContent from "./HeroContent";
 import { DEFAULT_MODE, HERO_CONTENT, getValidatedMode } from "./hero.constants";
 import HomeAchievements from "../home/HomeAchievements";
-import {
-    useCertificatesQuery,
-    useProjectsQuery,
-    useResumeQuery,
-} from "../../hooks/usePortfolioApi";
 
 const MODE_SWITCH_DEBOUNCE_MS = 130;
 
-const HeroSection = ({ profile }) => {
+const HeroSection = ({
+    profile,
+    achievements = [],
+    projectCount = 0,
+    certificateCount = 0,
+    experienceCount = 0,
+    isLoading = false,
+}) => {
     const [mode, setMode] = useState(DEFAULT_MODE);
     const modeSwitchTimerRef = useRef(null);
 
@@ -47,14 +49,6 @@ const HeroSection = ({ profile }) => {
             }
         };
     }, []);
-
-    const resumeQuery = useResumeQuery();
-    const projectsQuery = useProjectsQuery();
-    const certificatesQuery = useCertificatesQuery();
-
-    const resume = resumeQuery.data?.item || {};
-    const projects = projectsQuery.data?.items || [];
-    const certificates = certificatesQuery.data?.items || [];
 
     return (
         <SectionWrapper
@@ -99,10 +93,11 @@ const HeroSection = ({ profile }) => {
                     </div>
                 </div>
                 <HomeAchievements
-                    achievements={resume.achievements || []}
-                    projectCount={projects.length}
-                    certificateCount={certificates.length}
-                    experienceCount={(resume.experience || []).length}
+                    achievements={achievements}
+                    projectCount={projectCount}
+                    certificateCount={certificateCount}
+                    experienceCount={experienceCount}
+                    isLoading={isLoading}
                 />
             </Container>
         </SectionWrapper>

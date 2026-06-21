@@ -18,6 +18,17 @@
   --font-sans: 'Josefin Sans', sans-serif;
 }
 
+@keyframes blueprint-scan {
+  0% { transform: translateX(-140%); }
+  55%, 100% { transform: translateX(240%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*="blueprint-scan"] {
+    animation: none !important;
+  }
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;

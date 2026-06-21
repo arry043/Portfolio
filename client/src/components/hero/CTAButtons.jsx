@@ -43,6 +43,7 @@ const CTAButtons = () => {
       const result = await triggerResumeDownload({
         endpoint: defaultResume?.downloadApiUrl || '/download-resume',
         fileName: getResumeDownloadFileName(defaultResume),
+        resume: defaultResume,
       });
 
       if (!result?.ok) {
