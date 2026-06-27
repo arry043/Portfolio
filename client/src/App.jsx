@@ -41,6 +41,7 @@ const AdminCertificatesPage = lazy(() => import('./pages/admin/AdminCertificates
 const AdminProjectsPage = lazy(() => import('./pages/admin/AdminProjectsPage'));
 const AdminExperiencesPage = lazy(() => import('./pages/admin/AdminExperiencesPage'));
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminSkillsPage = lazy(() => import('./pages/admin/AdminSkillsPage'));
 
 const PageLoading = () => (
   <SectionWrapper className="min-h-[calc(100vh-4rem)] pt-24">
@@ -139,6 +140,7 @@ const AppShell = () => {
                   <Route path="resume" element={<AdminResumePage />} />
                   <Route path="certificates" element={<AdminCertificatesPage />} />
                   <Route path="projects" element={<AdminProjectsPage />} />
+                  <Route path="skills" element={<AdminSkillsPage />} />
                   <Route path="experiences" element={<AdminExperiencesPage />} />
                   <Route path="users" element={<AdminUsersPage />} />
                 </Route>

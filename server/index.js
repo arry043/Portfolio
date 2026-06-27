@@ -69,6 +69,7 @@ import gameRoutes from './src/routes/game.routes.js';
 import adminResumeRoutes from './src/routes/admin.resume.routes.js';
 import adminUserRoutes from './src/routes/admin.user.routes.js';
 import adminExperienceRoutes from './src/routes/admin.experience.routes.js';
+import skillRoutes from './src/routes/skill.routes.js';
 import { downloadDefaultResume } from './src/controllers/resume.controller.js';
 
 app.use('/api/v1/auth', authRoutes);
@@ -83,6 +84,7 @@ app.use('/api/v1/games', gameRoutes);
 app.use('/api/v1/admin/resumes', adminResumeRoutes);
 app.use('/api/v1/admin/users', adminUserRoutes);
 app.use('/api/v1/admin/experiences', adminExperienceRoutes);
+app.use('/api/v1/skills', skillRoutes);
 
 // Error Handling Middleware
 app.use(notFound);

@@ -7,6 +7,7 @@ const queryKeys = {
     certificates: ["certificates"],
     resume: ["resume-content"],
     games: ["games"],
+    skills: ["skills"],
 };
 
 const fetchProjects = async (filters = {}) => {
@@ -82,6 +83,18 @@ export const useGamesQuery = () =>
     useQuery({
         queryKey: queryKeys.games,
         queryFn: fetchGames,
+        staleTime: 120_000,
+    });
+
+const fetchSkills = async () => {
+    const response = await api.get("/skills");
+    return response.data;
+};
+
+export const useSkillsQuery = () =>
+    useQuery({
+        queryKey: queryKeys.skills,
+        queryFn: fetchSkills,
         staleTime: 120_000,
     });
 

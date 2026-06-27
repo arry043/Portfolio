@@ -9,6 +9,7 @@ const adminQueryKeys = {
   experiences: ['admin', 'experiences'],
   users: ['admin', 'users'],
   messages: ['admin', 'messages'],
+  skills: ['admin', 'skills'],
 };
 
 const fetchAdminAnalyticsSummary = async () => {
@@ -386,6 +387,80 @@ export const useUpdateAdminUserRoleMutation = createInvalidatingMutation(updateA
 
 export const useDeleteAdminUserMutation = createInvalidatingMutation(deleteAdminUser, [
   adminQueryKeys.users,
+]);
+
+const fetchAdminSkills = async () => {
+  const response = await api.get('/skills/all');
+  return response.data;
+};
+
+const buildSkillFormData = (payload) => {
+  const formData = new FormData();
+  if (payload.skill !== undefined) {
+    formData.append('skill', payload.skill);
+  }
+  if (payload.percentage !== undefined) {
+    formData.append('percentage', String(payload.percentage));
+  }
+  if (payload.category !== undefined) {
+    formData.append('category', payload.category || '');
+  }
+  if (payload.displayOrder !== undefined) {
+    formData.append('displayOrder', String(payload.displayOrder));
+  }
+  if (payload.featured !== undefined) {
+    formData.append('featured', String(payload.featured));
+  }
+  if (payload.isActive !== undefined) {
+    formData.append('isActive', String(payload.isActive));
+  }
+  if (payload.logoFile) {
+    formData.append('logo', payload.logoFile);
+  } else if (payload.logoUrl) {
+    formData.append('logo', payload.logoUrl);
+  }
+  return formData;
+};
+
+const createAdminSkill = async (payload) => {
+  const { onUploadProgress, ...requestPayload } = payload;
+  const response = await api.post('/skills', buildSkillFormData(requestPayload), {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    ...(typeof onUploadProgress === 'function' ? { onUploadProgress } : {}),
+  });
+  return response.data;
+};
+
+const updateAdminSkill = async ({ id, payload }) => {
+  const { onUploadProgress, ...requestPayload } = payload;
+  const response = await api.patch(`/skills/${id}`, buildSkillFormData(requestPayload), {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    ...(typeof onUploadProgress === 'function' ? { onUploadProgress } : {}),
+  });
+  return response.data;
+};
+
+const deleteAdminSkill = async (id) => {
+  const response = await api.delete(`/skills/${id}`);
+  return response.data;
+};
+
+export const useAdminSkillsQuery = () =>
+  useQuery({
+    queryKey: adminQueryKeys.skills,
+    queryFn: fetchAdminSkills,
+  });
+
+export const useCreateAdminSkillMutation = createInvalidatingMutation(createAdminSkill, [
+  adminQueryKeys.skills,
+]);
+
+export const useUpdateAdminSkillMutation = createInvalidatingMutation(updateAdminSkill, [
+  adminQueryKeys.skills,
+]);
+
+export const useDeleteAdminSkillMutation = createInvalidatingMutation(deleteAdminSkill, [
+  adminQueryKeys.skills,
 ]);
 
 export { adminQueryKeys };

@@ -91,3 +91,28 @@ export const adminExperienceSchema = z
 export const adminUserRoleSchema = z.object({
   role: z.enum(['user', 'admin']),
 });
+
+export const adminSkillSchema = z.object({
+  skill: z.string().trim().min(1, 'Skill name is required').max(100),
+  percentage: z.preprocess(
+    (value) => (value === '' || value === undefined ? undefined : Number(value)),
+    z
+      .number({ required_error: 'Percentage is required', invalid_type_error: 'Must be a number' })
+      .int('Must be a whole number')
+      .min(0, 'Minimum is 0')
+      .max(100, 'Maximum is 100')
+  ),
+  category: z.string().trim().max(80).optional().default(''),
+  displayOrder: z.preprocess(
+    (value) => (value === '' || value === undefined ? 0 : Number(value)),
+    z.number().int().min(0).default(0)
+  ),
+  featured: z.boolean().default(true),
+  isActive: z.boolean().default(true),
+  logoFile: maybeFile
+    .refine((value) => !value || allowedImageMimeTypes.has(value.type), 'Only JPG, PNG, or WEBP images are allowed')
+    .refine(
+      (value) => !value || value.size <= MAX_UPLOAD_SIZE_BYTES,
+      'Image size must be 5MB or less'
+    ),
+});

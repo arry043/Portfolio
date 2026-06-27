@@ -4,7 +4,7 @@ import HomeWhatIAm from '../components/home/HomeWhatIAm';
 import HomeHighlights from '../components/home/HomeHighlights';
 import CodingProfilesHighlights from '../components/sections/CodingProfilesHighlights';
 import HomeContactCta from '../components/home/HomeContactCta';
-import { useCertificatesQuery, useProjectsQuery, useResumeQuery } from '../hooks/usePortfolioApi';
+import { useCertificatesQuery, useProjectsQuery, useResumeQuery, useSkillsQuery } from '../hooks/usePortfolioApi';
 import { useToast } from '../context/ToastContext';
 import { getErrorMessage } from '../lib/api';
 
@@ -12,6 +12,7 @@ const Home = () => {
   const resumeQuery = useResumeQuery();
   const projectsQuery = useProjectsQuery();
   const certificatesQuery = useCertificatesQuery();
+  const skillsQuery = useSkillsQuery();
   const toast = useToast();
 
   useEffect(() => {
@@ -32,9 +33,16 @@ const Home = () => {
     }
   }, [certificatesQuery.error, certificatesQuery.isError, toast]);
 
+  useEffect(() => {
+    if (skillsQuery.isError) {
+      toast.error(getErrorMessage(skillsQuery.error), 'Skills Fetch Failed');
+    }
+  }, [skillsQuery.error, skillsQuery.isError, toast]);
+
   const resume = resumeQuery.data?.item || {};
   const projects = projectsQuery.data?.items || [];
   const certificates = certificatesQuery.data?.items || [];
+  const dbSkills = skillsQuery.data?.items || [];
 
   return (
     <>
@@ -50,7 +58,9 @@ const Home = () => {
       <HomeHighlights
         projects={projects}
         skills={resume.skills}
+        dbSkills={dbSkills}
         isLoading={resumeQuery.isLoading || projectsQuery.isLoading}
+        isSkillsLoading={skillsQuery.isLoading}
       />
       <CodingProfilesHighlights />
       <HomeContactCta />

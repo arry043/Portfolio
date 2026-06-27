@@ -4,6 +4,7 @@ import {
   FileText,
   FolderKanban,
   Medal,
+  Sparkles,
   Users,
 } from 'lucide-react';
 
@@ -12,6 +13,8 @@ export const adminNavItems = [
   { label: 'Manage Resume', to: '/admin/resume', icon: FileText },
   { label: 'Manage Certificates', to: '/admin/certificates', icon: Medal },
   { label: 'Manage Projects', to: '/admin/projects', icon: FolderKanban },
+  { label: 'Manage Skills', to: '/admin/skills', icon: Sparkles },
   { label: 'Experiences', to: '/admin/experiences', icon: BriefcaseBusiness },
   { label: 'User Management', to: '/admin/users', icon: Users },
 ];
+
