@@ -65,12 +65,12 @@ const AboutSection = () => {
               <div className="flex flex-col">
                 <ExperienceTimeline />
                 <EducationList />
+                <AchievementsStats />
               </div>
               
               {/* Right Column */}
               <div className="flex flex-col">
                 <SkillsTechStack />
-                <AchievementsStats />
               </div>
             </div>
           </Motion.div>
