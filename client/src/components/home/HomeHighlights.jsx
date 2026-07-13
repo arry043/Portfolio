@@ -29,7 +29,7 @@ const projectCardVariants = {
 };
 
 const ACHIEVEMENTS = [
-    { value: "200+", label: "LeetCode" },
+    { value: "300+", label: "LeetCode" },
     { value: "250+", label: "GFG Rank 20" },
     { value: "400+", label: "Naukri Problems" },
     { value: "GATE", label: "Qualified" },
