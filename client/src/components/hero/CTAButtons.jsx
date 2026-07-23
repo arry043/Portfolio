@@ -1,71 +1,20 @@
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import { FileText, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { HERO_CTA_CONFIG } from './hero.constants';
-import useDefaultResumeStore from '../../store/useDefaultResumeStore';
-import { useToast } from '../../context/ToastContext';
-import { getErrorMessage } from '../../lib/api';
-import {
-  getResumeDownloadFileName,
-  triggerResumeDownload,
-} from '../../lib/resumeDownload';
 
 const CTAButtons = () => {
   const navigate = useNavigate();
-  const toast = useToast();
-  const [isDownloading, setIsDownloading] = useState(false);
-  const defaultResume = useDefaultResumeStore((state) => state.defaultResume);
-  const isLoadingResume = useDefaultResumeStore((state) => state.isLoading);
-  const hasFetchedResume = useDefaultResumeStore((state) => state.hasFetched);
-  const resumeError = useDefaultResumeStore((state) => state.error);
-
-  const hasDownloadableResume = Boolean(defaultResume?._id || defaultResume?.fileUrl);
-  const shouldHideDownloadButton =
-    hasFetchedResume && !isLoadingResume && !hasDownloadableResume && !resumeError;
-  const downloadLabel = isDownloading
-    ? 'Preparing Download...'
-    : hasDownloadableResume
-    ? HERO_CTA_CONFIG.secondary.label
-    : isLoadingResume
-    ? 'Loading Resume...'
-    : 'Resume Unavailable';
 
   const handleDownloadResume = async () => {
-    if (!hasDownloadableResume || isDownloading) {
-      return;
-    }
-
-    setIsDownloading(true);
-    const loadingToastId = toast.loading('Preparing resume download...');
-
-    try {
-      const result = await triggerResumeDownload({
-        endpoint: defaultResume?.downloadApiUrl || '/download-resume',
-        fileName: getResumeDownloadFileName(defaultResume),
-        resume: defaultResume,
-      });
-
-      if (!result?.ok) {
-        throw result?.error || new Error('Resume download failed.');
-      }
-
-      toast.update(loadingToastId, {
-        type: 'success',
-        title: 'Download Started',
-        message: `${result.fileName || getResumeDownloadFileName(defaultResume)} is downloading.`,
-        persistent: false,
-      });
-    } catch (error) {
-      toast.update(loadingToastId, {
-        type: 'error',
-        title: 'Download Failed',
-        message: getErrorMessage(error),
-        persistent: false,
-      });
-    } finally {
-      setIsDownloading(false);
-    }
+    const link = document.createElement('a');
+    link.href = HERO_CTA_CONFIG.secondary.url;
+    link.download = 'resume.pdf';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -78,20 +27,14 @@ const CTAButtons = () => {
         <UserPlus className="h-4 w-4" />
         {HERO_CTA_CONFIG.primary.label}
       </Button>
-      {!shouldHideDownloadButton ? (
-        <Button
-          variant="secondary"
-          className={`w-full gap-2 sm:w-auto px-8 py-3.5 text-[15px] sm:text-base font-bold border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all duration-300 ${
-            !hasDownloadableResume ? 'cursor-not-allowed opacity-65 hover:bg-zinc-800' : ''
-          }`}
-          onClick={handleDownloadResume}
-          disabled={!hasDownloadableResume || isDownloading}
-          title={!hasDownloadableResume ? 'No default resume available right now' : undefined}
-        >
-          <FileText className="h-4 w-4" />
-          {downloadLabel}
-        </Button>
-      ) : null}
+      <Button
+        variant="secondary"
+        className="w-full gap-2 sm:w-auto px-8 py-3.5 text-[15px] sm:text-base font-bold border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all duration-300"
+        onClick={handleDownloadResume}
+      >
+        <FileText className="h-4 w-4" />
+        {HERO_CTA_CONFIG.secondary.label}
+      </Button>
     </div>
   );
 };

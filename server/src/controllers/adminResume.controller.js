@@ -7,6 +7,27 @@ import {
 import {
   ensureDefaultResumeSelection,
 } from '../services/defaultResume.service.js';
+import { publishDefaultResumeToGitHub } from '../services/github.service.js';
+import logger from '../utils/logger.js';
+
+const STATIC_RESUME_WARNING = 'Resume was saved, but the static resume could not be published.';
+
+const publishStaticResume = async (resume) => {
+  if (!resume?.isDefault) {
+    return null;
+  }
+
+  try {
+    await publishDefaultResumeToGitHub({ fileUrl: resume.fileUrl, resumeId: resume._id });
+    return null;
+  } catch (error) {
+    logger.warn('[GITHUB_RESUME] Static publishing failed after resume save', {
+      resumeId: String(resume?._id || ''),
+      error: error?.message || 'Unknown error',
+    });
+    return STATIC_RESUME_WARNING;
+  }
+};
 
 const validateCloudinaryUrl = (value, fieldName = 'fileUrl') => {
   if (!value) {
@@ -76,8 +97,14 @@ export const createAdminResume = async (req, res, next) => {
 
     await ensureDefaultResumeSelection();
     const item = await Resume.findById(createdItem._id);
+    const warning = await publishStaticResume(item);
 
-    return res.status(201).json({ success: true, item, storageProvider: 'cloudinary' });
+    return res.status(201).json({
+      success: true,
+      item,
+      storageProvider: 'cloudinary',
+      ...(warning ? { warning } : {}),
+    });
   } catch (error) {
     if (error?.statusCode && res.statusCode === 200) {
       res.status(error.statusCode);
@@ -116,8 +143,9 @@ export const updateAdminResume = async (req, res, next) => {
 
     await ensureDefaultResumeSelection();
     const item = await Resume.findById(updatedItem._id);
+    const warning = req.file || fileUrl ? await publishStaticResume(item) : null;
 
-    return res.json({ success: true, item });
+    return res.json({ success: true, item, ...(warning ? { warning } : {}) });
   } catch (error) {
     if (error?.statusCode && res.statusCode === 200) {
       res.status(error.statusCode);

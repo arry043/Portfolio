@@ -8,11 +8,27 @@ import {
   setDefaultResumeById,
 } from '../services/defaultResume.service.js';
 import { getCloudinarySecureUrl } from '../services/cloudinary.service.js';
+import { publishDefaultResumeToGitHub } from '../services/github.service.js';
 import { mapTimelineExperiences } from '../services/experienceTimeline.service.js';
+import logger from '../utils/logger.js';
 
 const DEFAULT_DOWNLOAD_API_PATH = '/download-resume';
 const DEFAULT_DOWNLOAD_BASE_NAME = 'Arif_Ansari_Resume';
 const DEFAULT_DOWNLOAD_EXTENSION = 'pdf';
+const STATIC_RESUME_WARNING = 'Default resume was updated, but the static resume could not be published.';
+
+const publishStaticResume = async (resume) => {
+  try {
+    await publishDefaultResumeToGitHub({ fileUrl: resume.fileUrl, resumeId: resume._id });
+    return null;
+  } catch (error) {
+    logger.warn('[GITHUB_RESUME] Static publishing failed after default selection', {
+      resumeId: String(resume?._id || ''),
+      error: error?.message || 'Unknown error',
+    });
+    return STATIC_RESUME_WARNING;
+  }
+};
 
 const MIME_BY_EXTENSION = {
   pdf: 'application/pdf',
@@ -266,6 +282,8 @@ export const setDefaultResume = async (req, res, next) => {
       throw new Error('Default resume must use a valid Cloudinary URL');
     }
 
+    const warning = await publishStaticResume(item);
+
     return res.json({
       success: true,
       item: mapped,
@@ -275,6 +293,7 @@ export const setDefaultResume = async (req, res, next) => {
         downloadApiUrl: mapped.downloadApiUrl,
       },
       message: 'Default resume updated successfully',
+      ...(warning ? { warning } : {}),
     });
   } catch (error) {
     if (error?.statusCode && res.statusCode === 200) {
