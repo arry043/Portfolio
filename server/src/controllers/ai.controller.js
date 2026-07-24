@@ -2,7 +2,12 @@ import {
   getResumeKnowledgeStatus,
   indexResumeFromFile,
 } from '../services/resumeKnowledge.service.js';
-import { answerWithRag, getRagStatus, rebuildVectorStoreInBackground } from '../rag/index.js';
+import {
+  answerWithRag,
+  getRagStatus,
+  rebuildVectorStoreInBackground,
+  isRagReady,
+} from '../rag/index.js';
 import logger from '../utils/logger.js';
 
 const FRIENDLY_ERROR_MESSAGE =
@@ -48,6 +53,17 @@ export const askResume = async (req, res, next) => {
           chunks: [],
         },
         message: 'Query too short',
+      });
+    }
+
+    if (!isRagReady()) {
+      return res.status(200).json({
+        success: true,
+        item: {
+          answer: "I'm still warming up my knowledge base. Please try again in a few seconds!",
+          chunks: [],
+        },
+        message: 'RAG warming up',
       });
     }
 

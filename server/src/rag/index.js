@@ -1,18 +1,16 @@
-/**
- * RAG Module — Thin orchestrator.
- *
- * Imports all submodules and exposes the same public API that
- * the rest of the application depends on:
- *
- *   initializeRag()
- *   rebuildVectorStore()
- *   rebuildVectorStoreInBackground()
- *   answerWithRag(query)
- *   getRagStatus()
- */
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { loadAllSources } from './loaders/loaders.js';
-import { buildVectorStore, setVectorStore, getVectorStoreStatus } from './vectorStore/vectorStore.js';
+import {
+  buildVectorStore,
+  setVectorStore,
+  getVectorStoreStatus,
+  loadCachedVectorStore,
+  saveVectorStoreToCache,
+} from './vectorStore/vectorStore.js';
 import { retrieveContext } from './retriever/retriever.js';
 import { askChatGroq } from './chain/chain.js';
 import { classifyQuery, FALLBACK_MESSAGE } from './utils/classifyQuery.js';
@@ -23,51 +21,90 @@ import {
 } from './prompts/prompts.js';
 import logger from '../utils/logger.js';
 
+const dir = path.dirname(fileURLToPath(import.meta.url));
+const knowledgePath = path.resolve(dir, 'data/knowledge.md');
+const resumePath = path.resolve(dir, '../../../client/public/resume.pdf');
+const cacheDir = path.resolve(dir, 'data/cache');
+
 /* ------------------------------------------------------------------ */
-/*  Singleton guard for initial build                                 */
+/*  RAG Readiness Flag & Singleton                                    */
 /* ------------------------------------------------------------------ */
+let ragReady = false;
 let initialization = null;
 
-/* ------------------------------------------------------------------ */
-/*  Vector Store lifecycle                                            */
-/* ------------------------------------------------------------------ */
+export const isRagReady = () => ragReady;
 
 /**
- * (Re)build the FAISS vector store from the latest knowledge.md + resume.pdf.
- * Can be called at any time; atomically swaps the store so in-flight
- * requests keep using the old store until the new one is ready.
+ * Compute SHA256 hash of knowledge.md + resume.pdf contents.
+ */
+const getSourceHash = async () => {
+  const hash = crypto.createHash('sha256');
+  try {
+    const kBuf = await fs.readFile(knowledgePath);
+    hash.update(kBuf);
+  } catch {}
+  try {
+    const rBuf = await fs.readFile(resumePath);
+    hash.update(rBuf);
+  } catch {}
+  return hash.digest('hex');
+};
+
+/**
+ * (Re)build the FAISS vector store.
+ * First checks disk cache; if hash matches, loads from disk without calling Gemini API.
  */
 export const rebuildVectorStore = async () => {
+  ragReady = false;
   logger.info('[RAG] Rebuilding vector store', { sources: ['knowledge.md', 'resume.pdf'] });
 
+  const currentHash = await getSourceHash();
+
+  // Try loading from disk cache first
+  const cachedStore = await loadCachedVectorStore(cacheDir, currentHash);
+  if (cachedStore) {
+    setVectorStore(cachedStore);
+    ragReady = true;
+    const chunkCount = getVectorStoreStatus().chunkCount;
+    return { chunkCount, updatedAt: new Date() };
+  }
+
+  // If cache missed or stale, build new store using Gemini API
   const documents = await loadAllSources();
   const { store, chunkCount } = await buildVectorStore(documents);
 
-  // Atomic swap — old store is garbage-collected
   setVectorStore(store);
+  ragReady = true;
+
+  // Asynchronously save new store and hash to disk cache
+  saveVectorStoreToCache(store, cacheDir, currentHash).catch(() => {});
 
   logger.info('[RAG] Vector store ready', { chunkCount });
   return { chunkCount, updatedAt: new Date() };
 };
 
 /**
- * Lazy singleton initialization — called once on first need.
- * If the initial build fails, clears the guard so it can be retried.
+ * Lazy singleton initialization — called once in background.
  */
 export const initializeRag = async () => {
   if (!initialization) {
-    initialization = rebuildVectorStore().catch((error) => {
-      initialization = null;
-      logger.error('[RAG] Initial build failed', error);
-      throw error;
-    });
+    initialization = (async () => {
+      try {
+        const result = await rebuildVectorStore();
+        return result;
+      } catch (error) {
+        initialization = null;
+        ragReady = false;
+        logger.error('[RAG] Initial build deferred/failed:', error?.message || error);
+        return null;
+      }
+    })();
   }
   return initialization;
 };
 
 /**
- * Fire-and-forget rebuild — used after resume uploads / GitHub publishes.
- * Never throws; logs errors instead.
+ * Fire-and-forget background rebuild.
  */
 export const rebuildVectorStoreInBackground = () => {
   rebuildVectorStore().catch((error) =>
@@ -79,15 +116,6 @@ export const rebuildVectorStoreInBackground = () => {
 /*  Chat answering                                                    */
 /* ------------------------------------------------------------------ */
 
-/**
- * Answer a user query using the appropriate strategy:
- * - greeting   → friendly response, no retrieval
- * - general    → direct LLM answer, no retrieval
- * - portfolio  → full RAG pipeline (retrieve → prompt → LLM)
- *
- * @param {string} query   - The current user question
- * @param {Array}  history - Previous messages [{role: 'user'|'assistant', content}]
- */
 export const answerWithRag = async (query, history = []) => {
   const question = String(query || '').trim();
   const category = classifyQuery(question);
@@ -126,4 +154,7 @@ export const answerWithRag = async (query, history = []) => {
 /*  Status                                                            */
 /* ------------------------------------------------------------------ */
 
-export const getRagStatus = () => getVectorStoreStatus();
+export const getRagStatus = () => ({
+  ...getVectorStoreStatus(),
+  isReady: ragReady,
+});

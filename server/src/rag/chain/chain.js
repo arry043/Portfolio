@@ -9,6 +9,15 @@ const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 const DEFAULT_TEMPERATURE = 0.3;
 const MAX_HISTORY_MESSAGES = 20;
 
+let groqClient = null;
+
+const getGroqClient = () => {
+  if (!groqClient) {
+    groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+  return groqClient;
+};
+
 /**
  * Send a question to ChatGroq with conversation history for context.
  *
@@ -17,7 +26,7 @@ const MAX_HISTORY_MESSAGES = 20;
  * @param {Array}    history      - Previous messages [{role: 'user'|'assistant', content}]
  */
 export const askChatGroq = async (question, systemPrompt, history = []) => {
-  const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  const client = getGroqClient();
 
   // Build message array: system → history → current question
   const messages = [

@@ -94,6 +94,17 @@ const STOP_WORDS = new Set([
 ]);
 
 const resumeTextCache = new Map();
+const MAX_RESUME_CACHE_SIZE = 20;
+
+const setResumeTextCache = (key, value) => {
+  if (resumeTextCache.size >= MAX_RESUME_CACHE_SIZE) {
+    const oldestKey = resumeTextCache.keys().next().value;
+    if (oldestKey) {
+      resumeTextCache.delete(oldestKey);
+    }
+  }
+  resumeTextCache.set(key, value);
+};
 let groqClient = null;
 const FULL_DETAILS_PATTERN = /\bfull\s+details\b/i;
 
@@ -360,7 +371,7 @@ const getAdminResumeParsedText = async (resume) => {
     });
 
     if (text) {
-      resumeTextCache.set(cacheKey, {
+      setResumeTextCache(cacheKey, {
         fingerprint,
         text,
         cachedAt: now,
