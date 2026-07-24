@@ -2,6 +2,7 @@ import { rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import logger from '../utils/logger.js';
+import { rebuildVectorStoreInBackground } from '../rag/index.js';
 
 const GITHUB_API_ROOT = 'https://api.github.com';
 const MAX_ATTEMPTS = 3;
@@ -141,6 +142,7 @@ const publishDefaultResumeLocally = async ({ fileUrl, resumeId }) => {
     resumeId: String(resumeId || ''),
     filePath: 'client/public/resume.pdf',
   });
+  rebuildVectorStoreInBackground();
   return { published: true, skipped: false, target: 'local' };
 };
 
@@ -207,6 +209,7 @@ export const publishDefaultResumeToGitHub = async ({ fileUrl, resumeId } = {}) =
         branch: config.branch,
         filePath: config.filePath,
       });
+      rebuildVectorStoreInBackground();
       return { published: true, skipped: false };
     }
 

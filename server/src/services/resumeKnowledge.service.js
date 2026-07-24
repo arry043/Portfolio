@@ -9,7 +9,7 @@ export const STRICT_FALLBACK_MESSAGE =
   "I'm having a small issue right now. Please try again in a moment.";
 
 const DEFAULT_SOURCE = 'seed-resume-data';
-const DEFAULT_GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile';
 const DEFAULT_GROQ_TEMPERATURE = 0.4;
 const DEFAULT_GROQ_TOP_P = 1;
 const DEFAULT_GROQ_MAX_COMPLETION_TOKENS = 1024;

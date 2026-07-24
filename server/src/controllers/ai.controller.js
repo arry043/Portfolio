@@ -1,21 +1,16 @@
 import {
-  askLLM,
-  formatLLMAnswer,
-  getResumeContext,
   getResumeKnowledgeStatus,
   indexResumeFromFile,
-  STRICT_FALLBACK_MESSAGE,
 } from '../services/resumeKnowledge.service.js';
-import { getWebsiteContext, mergeContext } from '../services/contextAggregator.service.js';
+import { answerWithRag, getRagStatus, rebuildVectorStoreInBackground } from '../rag/index.js';
 import logger from '../utils/logger.js';
 
-const NO_DATA_MESSAGE = STRICT_FALLBACK_MESSAGE;
 const FRIENDLY_ERROR_MESSAGE =
   "I'm having a small issue right now. Please try again in a moment.";
 
 export const getResumeStatus = async (req, res, next) => {
   try {
-    const status = await getResumeKnowledgeStatus();
+    const status = { ...(await getResumeKnowledgeStatus()), ...(await getRagStatus()) };
     return res.json({ success: true, item: status });
   } catch (error) {
     return next(error);
@@ -29,6 +24,7 @@ export const uploadResume = async (req, res, next) => {
     }
 
     const item = await indexResumeFromFile(req.file);
+    rebuildVectorStoreInBackground();
 
     return res.status(201).json({
       success: true,
@@ -42,7 +38,7 @@ export const uploadResume = async (req, res, next) => {
 
 export const askResume = async (req, res, next) => {
   try {
-    const { query } = req.validated?.body || req.body || {};
+    const { query, history } = req.validated?.body || req.body || {};
 
     if (!query || String(query).trim().length < 2) {
       return res.status(200).json({
@@ -55,34 +51,13 @@ export const askResume = async (req, res, next) => {
       });
     }
 
-    const [resumeData, websiteContext] = await Promise.all([
-      getResumeContext(query),
-      getWebsiteContext(query),
-    ]).catch((err) => {
-      logger.error('Context Retrieval Error:', err);
-      throw err;
-    });
-
-    const { chunks } = resumeData;
-    const mergedContext = mergeContext(
-      chunks.map((chunk) => chunk.text),
-      websiteContext
-    );
-
-    let response;
-
-    if (!mergedContext) {
-      response = { answer: NO_DATA_MESSAGE, chunks: [] };
-    } else {
-      const modelAnswer = await askLLM(query, mergedContext);
-      response = formatLLMAnswer(modelAnswer, query, chunks, mergedContext);
-    }
+    const response = await answerWithRag(query, history);
 
     return res.json({
       success: true,
       item: response,
       message:
-        response.answer === NO_DATA_MESSAGE
+        response.chunks.length === 0
           ? 'No direct context found'
           : 'Answer generated successfully',
     });

@@ -387,7 +387,16 @@ const GlobalChatbot = () => {
         const toastId = toast.loading("Arif is typing...");
 
         try {
-            const response = await chatMutation.mutateAsync({ query });
+            // Build conversation history from past messages (excluding pending)
+            const history = messages
+                .filter((m) => !m.pending && m.content)
+                .slice(-20)
+                .map((m) => ({
+                    role: m.role === "bot" ? "assistant" : "user",
+                    content: m.content,
+                }));
+
+            const response = await chatMutation.mutateAsync({ query, history });
             const rawAnswer = response?.item?.answer || FALLBACK_MESSAGE;
             const isFallback = rawAnswer.trim() === FALLBACK_MESSAGE;
             const answer = isFallback

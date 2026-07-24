@@ -71,6 +71,7 @@ import adminUserRoutes from './src/routes/admin.user.routes.js';
 import adminExperienceRoutes from './src/routes/admin.experience.routes.js';
 import skillRoutes from './src/routes/skill.routes.js';
 import { downloadDefaultResume } from './src/controllers/resume.controller.js';
+import { initializeRag } from './src/rag/index.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/projects', projectRoutes);
@@ -92,4 +93,5 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`[BOOT] Server running on port ${PORT}`);
+  initializeRag().catch(() => {});
 });
