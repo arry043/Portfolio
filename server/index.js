@@ -6,6 +6,7 @@ import { notFound, errorHandler } from './src/middlewares/errorMiddleware.js';
 import logger from './src/utils/logger.js';
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = env.PORT;
 
 // Connect to database
