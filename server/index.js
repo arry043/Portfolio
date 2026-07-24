@@ -17,23 +17,43 @@ logger.info(`[BOOT] Running in ${env.NODE_ENV} mode.`);
 logger.info(`[BOOT] CLIENT_URL is set to: ${env.CLIENT_URL}`);
 
 // Middleware
-const allowedOrigins = [
+const rawOrigins = [
   'http://localhost:5173',
+  'http://localhost:3000',
+  'https://arif-ansari.onrender.com',
+  env.CLIENT_URL,
   process.env.CLIENT_URL,
-].filter(Boolean);
+];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, or Postman)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
+const allowedOrigins = Array.from(
+  new Set(
+    rawOrigins
+      .filter(Boolean)
+      .map((url) => String(url).trim().replace(/\/+$/, ''))
+  )
+);
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, or Postman)
+      if (!origin) return callback(null, true);
+
+      const cleanOrigin = origin.trim().replace(/\/+$/, '');
+
+      if (
+        allowedOrigins.includes(cleanOrigin) ||
+        cleanOrigin.endsWith('.onrender.com')
+      ) {
+        return callback(null, true);
+      }
+
       logger.warn(`[CORS DEBUG] Rejected origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
+      return callback(null, false);
+    },
+    credentials: true,
+  })
+);
 
 // Log incoming requests for debugging
 app.use((req, res, next) => {
@@ -93,5 +113,9 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`[BOOT] Server running on port ${PORT}`);
-  initializeRag().catch(() => {});
+  setTimeout(() => {
+    initializeRag().catch((err) => {
+      logger.warn('[BOOT] Initial RAG build deferred/failed:', err?.message);
+    });
+  }, 5000);
 });
