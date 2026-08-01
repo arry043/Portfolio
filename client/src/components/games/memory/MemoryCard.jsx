@@ -1,8 +1,15 @@
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
+import { getTechIcon } from './techIconRegistry';
 
 const MemoryCard = ({ card, onClick, gridSize }) => {
   const isRevealed = card.isFlipped || card.isMatched;
+  const icon = getTechIcon(card.tech);
+  const [isIconUnavailable, setIsIconUnavailable] = useState(false);
+
+  useEffect(() => {
+    setIsIconUnavailable(false);
+  }, [icon]);
 
   // Responsive card sizing based on grid size
   const sizeClasses = {
@@ -57,13 +64,23 @@ const MemoryCard = ({ card, onClick, gridSize }) => {
           }`}
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
-          <span
-            className={`text-center font-semibold leading-tight ${
-              card.isMatched ? 'text-emerald-300' : 'text-zinc-200'
-            }`}
-          >
-            {card.tech}
-          </span>
+          {icon && !isIconUnavailable ? (
+            <img
+              src={icon}
+              alt={card.tech}
+              loading="lazy"
+              onError={() => setIsIconUnavailable(true)}
+              className="h-[62%] w-[62%] max-h-full max-w-full object-contain"
+            />
+          ) : (
+            <span
+              className={`text-center font-semibold leading-tight ${
+                card.isMatched ? 'text-emerald-300' : 'text-zinc-200'
+              }`}
+            >
+              {card.tech}
+            </span>
+          )}
         </div>
       </Motion.div>
     </Motion.button>
