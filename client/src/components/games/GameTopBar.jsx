@@ -19,7 +19,7 @@ const GameTopBar = ({
   const canChangeDifficulty = isIdle;
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center">
       {/* Left: Back + Title */}
       <div className="flex items-center gap-3">
         <Link
@@ -36,7 +36,7 @@ const GameTopBar = ({
       </div>
 
       {/* Center: Difficulty Selector */}
-      <div className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950/80 p-0.5">
+      <div className="self-center flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950/80 p-0.5 sm:col-start-2 sm:row-start-1">
         {difficulties.map((diff) => (
           <button
             key={diff}
@@ -57,7 +57,7 @@ const GameTopBar = ({
       </div>
 
       {/* Right: Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex self-end items-center gap-2 sm:col-start-3 sm:row-start-1 sm:justify-self-end">
         {(isPlaying || isPaused) && (
           <button
             onClick={isPaused ? onResume : onPause}

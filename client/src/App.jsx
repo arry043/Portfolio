@@ -118,14 +118,16 @@ const GameMergeSync = () => {
 const AppShell = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isGameRoute = location.pathname.startsWith('/game/');
+  const showSiteChrome = !isAdminRoute && !isGameRoute;
 
   // Activate tracking globally
   usePageTracking();
 
   return (
     <div className="flex min-h-screen flex-col bg-dark-primary font-sans text-text-primary selection:bg-zinc-700/50">
-      {!isAdminRoute ? <Navbar /> : null}
-      {!isAdminRoute ? <GlobalChatbot /> : null}
+      {showSiteChrome ? <Navbar /> : null}
+      {showSiteChrome ? <GlobalChatbot /> : null}
       <AuthSync />
       <DefaultResumeSync />
       <GameMergeSync />
@@ -191,7 +193,7 @@ const AppShell = () => {
           </AnimatePresence>
         </Suspense>
       </main>
-      {!isAdminRoute ? <HomeFooter /> : null}
+      {showSiteChrome ? <HomeFooter /> : null}
     </div>
   );
 };

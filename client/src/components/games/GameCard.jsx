@@ -17,6 +17,7 @@ import {
 } from '../../lib/gameRegistry';
 import useGameStore from '../../store/useGameStore';
 import useAuthStore from '../../store/useAuthStore';
+import memorizationLogo from '../../assets/memorization-logo.png';
 
 const ICON_MAP = {
   Brain,
@@ -30,6 +31,7 @@ const GameCard = ({ game, index = 0 }) => {
   const getGameBestScores = useGameStore((s) => s.getGameBestScores);
   const bestScores = getGameBestScores(game.slug);
   const IconComponent = ICON_MAP[game.icon] || Brain;
+  const isMemorizationGame = game.slug === 'memorization';
 
   // Find overall best score across difficulties
   const overallBest = Object.values(bestScores).reduce(
@@ -49,6 +51,23 @@ const GameCard = ({ game, index = 0 }) => {
         id={`game-card-${game.slug}`}
       >
         <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/80 p-5 sm:p-6 transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/80 hover:shadow-lg hover:shadow-black/30">
+          {isMemorizationGame && (
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 w-[72%] overflow-hidden"
+              style={{
+                maskImage: 'linear-gradient(to right, transparent, black 42%)',
+                WebkitMaskImage: 'linear-gradient(to right, transparent, black 42%)',
+              }}
+            >
+              <img
+                src={memorizationLogo}
+                alt=""
+                aria-hidden="true"
+                className="absolute -right-10 top-1/2 h-[260px] w-[260px] -translate-y-1/2 object-cover opacity-60 transition-all duration-500 group-hover:scale-105 group-hover:opacity-80"
+              />
+            </div>
+          )}
+
           {/* Subtle gradient overlay on hover */}
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/0 to-zinc-800/0 transition-all duration-500 group-hover:from-zinc-800/5 group-hover:to-zinc-700/5" />
 

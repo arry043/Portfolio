@@ -75,7 +75,7 @@ const MemoryGamePage = () => {
   const isPaused = game.status === 'paused';
 
   return (
-    <PageTransition className="pt-16">
+    <PageTransition>
       <div className="min-h-[calc(100vh-4rem)] bg-dark-secondary">
         <Container className="py-4 sm:py-6">
           <div className="space-y-4 sm:space-y-5">
@@ -100,9 +100,9 @@ const MemoryGamePage = () => {
             />
 
             {/* Main Content: Board + Leaderboard */}
-            <div className="flex flex-col items-start gap-4 lg:flex-row lg:justify-center">
+            <div className="flex flex-col items-center gap-4 lg:flex-row lg:justify-center">
               {/* Game Board */}
-              <div className="relative flex-1 flex justify-center">
+              <div className="relative flex w-full flex-1 justify-center">
                 <MemoryBoard
                   cards={game.cards}
                   difficulty={game.difficulty}
@@ -133,17 +133,6 @@ const MemoryGamePage = () => {
                 )}
               </div>
 
-              {/* Leaderboard Toggle (Mobile) */}
-              {isMobile && (
-                <button
-                  onClick={toggleLeaderboard}
-                  className="w-full rounded-lg border border-zinc-800 bg-zinc-950/80 px-4 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-200"
-                  id="toggle-leaderboard-mobile"
-                >
-                  {showLeaderboard ? 'Hide Leaderboard' : 'Show Leaderboard'}
-                </button>
-              )}
-
               {/* Leaderboard (Desktop: side panel) */}
               {!isMobile && (
                 <div className="hidden lg:block">
@@ -172,6 +161,7 @@ const MemoryGamePage = () => {
         <LeaderboardPanel
           gameSlug={GAME_SLUG}
           isOpen={showLeaderboard}
+          onOpen={() => setShowLeaderboard(true)}
           onClose={() => setShowLeaderboard(false)}
           isMobile={true}
         />

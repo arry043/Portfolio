@@ -23,7 +23,7 @@ const RANK_COLORS = {
   3: 'text-amber-600',
 };
 
-const LeaderboardPanel = ({ gameSlug, isOpen, onClose, isMobile = false }) => {
+const LeaderboardPanel = ({ gameSlug, isOpen, onOpen, onClose, isMobile = false }) => {
   const [activeTab, setActiveTab] = useState('easy');
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const currentUser = useAuthStore((s) => s.user);
@@ -234,9 +234,30 @@ const LeaderboardPanel = ({ gameSlug, isOpen, onClose, isMobile = false }) => {
   // Mobile: slide-up drawer
   if (isMobile) {
     return (
-      <AnimatePresence>
-        {isOpen && (
-          <>
+      <>
+        {!isOpen && (
+          <Motion.button
+            type="button"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.18}
+            onDragEnd={(_, info) => {
+              if (info.offset.y < -36) onOpen?.();
+            }}
+            onClick={onOpen}
+            className="fixed inset-x-0 bottom-0 z-30 flex h-10 touch-none items-center justify-center border-t border-zinc-800 bg-zinc-950/95"
+            aria-label="Open leaderboard"
+            id="leaderboard-pull-handle"
+          >
+            <span className="h-1 w-10 rounded-full bg-zinc-600" />
+          </Motion.button>
+        )}
+
+        <AnimatePresence>
+          {isOpen && (
+            <>
             <Motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -249,18 +270,27 @@ const LeaderboardPanel = ({ gameSlug, isOpen, onClose, isMobile = false }) => {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-hidden rounded-t-xl border-t border-zinc-800 bg-zinc-950"
+              className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-zinc-950"
               id="leaderboard-drawer"
             >
               {/* Drag handle */}
-              <div className="flex justify-center pb-0 pt-2">
+              <Motion.div
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={0.18}
+                onDragEnd={(_, info) => {
+                  if (info.offset.y > 80) onClose();
+                }}
+                className="flex justify-center pb-2 pt-3 touch-none"
+              >
                 <div className="h-1 w-8 rounded-full bg-zinc-700" />
-              </div>
+              </Motion.div>
               {content}
             </Motion.div>
           </>
         )}
-      </AnimatePresence>
+        </AnimatePresence>
+      </>
     );
   }
 
