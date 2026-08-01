@@ -14,7 +14,7 @@ const BASE_NAV_ITEMS = [
     { id: "experience", label: "Experience", path: "/experience" },
     { id: "projects", label: "Projects", path: "/projects" },
     { id: "certificates", label: "Certificates", path: "/certificates" },
-    { id: "games", label: "Labs", path: "/games" },
+    { id: "games", label: "Labs", path: "/labs" },
     { id: "about", label: "About", path: "/about" },
     { id: "contact", label: "Contact", path: "/contact" },
 ];
@@ -34,7 +34,9 @@ const isPathActive = (currentPathname, targetPath) => {
 
     return (
         currentPathname === targetPath ||
-        currentPathname.startsWith(`${targetPath}/`)
+        currentPathname.startsWith(`${targetPath}/`) ||
+        // Also highlight Labs when on any /game/* route
+        (targetPath === '/labs' && currentPathname.startsWith('/game/'))
     );
 };
 

@@ -25,12 +25,15 @@ import useAuthStore from './store/useAuthStore';
 import useDefaultResumeStore from './store/useDefaultResumeStore';
 import { useEffect } from 'react';
 import useBackendAuthSync from './hooks/useBackendAuthSync';
+import useGameMergeCheck from './hooks/useGameMergeCheck';
+import MergeProgressModal from './components/games/MergeProgressModal';
 import './index.css';
 
 const Home = lazy(() => import('./pages/Home'));
 const ProjectsPage = lazy(() => import('./pages/Projects'));
 const ExperiencePage = lazy(() => import('./pages/Experience'));
-const GamesPage = lazy(() => import('./pages/Games'));
+const LabsPage = lazy(() => import('./pages/Games'));
+const MemoryGamePage = lazy(() => import('./pages/MemoryGame'));
 const CertificatesPage = lazy(() => import('./pages/Certificates'));
 const AboutPage = lazy(() => import('./pages/About'));
 const ContactPage = lazy(() => import('./pages/Contact'));
@@ -98,6 +101,20 @@ const DefaultResumeSync = () => {
   return null;
 };
 
+const GameMergeSync = () => {
+  const { showMergeModal, handleMerge, handleDiscard, isMerging } =
+    useGameMergeCheck();
+
+  return (
+    <MergeProgressModal
+      isOpen={showMergeModal}
+      onMerge={handleMerge}
+      onDiscard={handleDiscard}
+      isLoading={isMerging}
+    />
+  );
+};
+
 const AppShell = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -111,6 +128,7 @@ const AppShell = () => {
       {!isAdminRoute ? <GlobalChatbot /> : null}
       <AuthSync />
       <DefaultResumeSync />
+      <GameMergeSync />
       <main className="flex-grow">
         <Suspense fallback={<PageLoading />}>
           <AnimatePresence mode="wait">
@@ -118,7 +136,9 @@ const AppShell = () => {
               <Route path="/" element={<Home />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/experience" element={<ExperiencePage />} />
-              <Route path="/games" element={<GamesPage />} />
+              <Route path="/labs" element={<LabsPage />} />
+              <Route path="/game/memorization" element={<MemoryGamePage />} />
+              <Route path="/games" element={<Navigate to="/labs" replace />} />
               <Route path="/certificates" element={<CertificatesPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />

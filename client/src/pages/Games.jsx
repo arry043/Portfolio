@@ -1,16 +1,13 @@
 import { memo } from 'react';
 import PageTransition from '../components/layout/PageTransition';
-import LazyMountSection from '../components/layout/LazyMountSection';
 import GameSection from '../components/sections/GameSection';
 
-const GamesPage = () => {
+const LabsPage = () => {
   return (
     <PageTransition className="pt-16">
-      <LazyMountSection cardCount={2}>
-        <GameSection />
-      </LazyMountSection>
+      <GameSection />
     </PageTransition>
   );
 };
 
-export default memo(GamesPage);
+export default memo(LabsPage);
